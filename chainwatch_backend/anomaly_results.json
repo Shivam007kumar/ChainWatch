@@ -1,0 +1,86 @@
+[
+  {
+    "wallet_address": "02733d99fbd3532fb1af3ac36e641dcf6f",
+    "confidence_score": 99.0,
+    "cluster_id": 2,
+    "cluster_name": "Multi-Hop Relay Cluster",
+    "reason": "Flagged: active across 16 distinct IPs; transactions from 22 high-risk jurisdictions (Russia/Nigeria/Unknown); spread across 6 different countries.",
+    "tx_count": 32,
+    "total_volume_btc": 88.939,
+    "unique_ip_count": 16,
+    "high_risk_hits": 22,
+    "sample_txid": "8cef6754be2941a8a9e97d1dcb6745b2"
+  },
+  {
+    "wallet_address": "b691445f9fd775da72149b59cf58f5215b",
+    "confidence_score": 95.0,
+    "cluster_id": 2,
+    "cluster_name": "Multi-Hop Relay Cluster",
+    "reason": "Flagged: active across 19 distinct IPs; transactions from 19 high-risk jurisdictions (Russia/Nigeria/Unknown); spread across 6 different countries.",
+    "tx_count": 31,
+    "total_volume_btc": 85.4412,
+    "unique_ip_count": 19,
+    "high_risk_hits": 19,
+    "sample_txid": "5a3e61994b0545b8a6cd70a00a8beaf1"
+  },
+  {
+    "wallet_address": "cac0f270194deb44921e53849ffdd7bd07",
+    "confidence_score": 87.9,
+    "cluster_id": 3,
+    "cluster_name": "Dormant-then-Active Wallet",
+    "reason": "Flagged: active across 6 distinct IPs; spread across 4 different countries; unusually high transaction frequency (6 TXs).",
+    "tx_count": 6,
+    "total_volume_btc": 20.6064,
+    "unique_ip_count": 6,
+    "high_risk_hits": 1,
+    "sample_txid": "d626921cf2cb45b89fbd1158a7b4d95e"
+  },
+  {
+    "wallet_address": "71352ce8dec752cb28e90721b76ad421e8",
+    "confidence_score": 68.9,
+    "cluster_id": 3,
+    "cluster_name": "Dormant-then-Active Wallet",
+    "reason": "Flagged: active across 7 distinct IPs; spread across 4 different countries; unusually high transaction frequency (9 TXs).",
+    "tx_count": 9,
+    "total_volume_btc": 22.7834,
+    "unique_ip_count": 7,
+    "high_risk_hits": 2,
+    "sample_txid": "5c5454bdee3b418fa8ca790df1683e75"
+  },
+  {
+    "wallet_address": "b7dd5ca67c86a6dadede42adad1814e7f4",
+    "confidence_score": 64.2,
+    "cluster_id": 5,
+    "cluster_name": "Low-Risk Retail Activity",
+    "reason": "Flagged: active across 15 distinct IPs; transactions from 16 high-risk jurisdictions (Russia/Nigeria/Unknown); spread across 6 different countries.",
+    "tx_count": 25,
+    "total_volume_btc": 63.7748,
+    "unique_ip_count": 15,
+    "high_risk_hits": 16,
+    "sample_txid": "ebc3e2aaf1334f8fb73169a26e151d47"
+  },
+  {
+    "wallet_address": "5e99dd9bdf4b71a055e416931748bc75f1",
+    "confidence_score": 64.2,
+    "cluster_id": 5,
+    "cluster_name": "Low-Risk Retail Activity",
+    "reason": "Flagged: active across 16 distinct IPs; transactions from 6 high-risk jurisdictions (Russia/Nigeria/Unknown); spread across 5 different countries.",
+    "tx_count": 21,
+    "total_volume_btc": 69.5711,
+    "unique_ip_count": 16,
+    "high_risk_hits": 6,
+    "sample_txid": "0aad4c538e45423095cda83fba62c200"
+  },
+  {
+    "wallet_address": "e2e314ae7ee5cc6ae0cad3519707f8bb12",
+    "confidence_score": 60.0,
+    "cluster_id": 3,
+    "cluster_name": "Dormant-then-Active Wallet",
+    "reason": "Flagged: active across 9 distinct IPs; transactions from 5 high-risk jurisdictions (Russia/Nigeria/Unknown); spread across 4 different countries.",
+    "tx_count": 10,
+    "total_volume_btc": 19.7196,
+    "unique_ip_count": 9,
+    "high_risk_hits": 5,
+    "sample_txid": "205daea5f58c4cd5a7d548c8e43be334"
+  }
+]
