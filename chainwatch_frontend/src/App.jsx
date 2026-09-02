@@ -7,6 +7,42 @@ import './index.css';
 
 const API = 'http://localhost:8000/api/v1';
 
+// Simple Dictionary for Language Toggle
+const dict = {
+  en: {
+    skip: "Skip to Main Content",
+    gov: "Government of India",
+    ntro: "National Technical Research Organisation",
+    title: "ChainWatch",
+    subtitle: "| Threat Intelligence",
+    heroTitle: "National Crypto-Threat Intelligence Network",
+    heroSub: "Securing India's digital financial infrastructure through AI-driven blockchain forensics and anomaly detection.",
+    alerts: "ALERTS",
+    secure: "SECURE OFFLINE",
+    about: "About the Platform",
+    aboutText: "ChainWatch is an advanced AI-powered offline intelligence system designed by NTRO to monitor, detect, and analyze illicit cryptocurrency transaction traffic.",
+    quickLinks: "Quick Links",
+    nodalAgency: "Nodal Agency",
+    copyright: "© 2026 National Technical Research Organisation, Government of India. All rights reserved."
+  },
+  hi: {
+    skip: "मुख्य सामग्री पर जाएं",
+    gov: "भारत सरकार",
+    ntro: "राष्ट्रीय तकनीकी अनुसंधान संगठन",
+    title: "चेनवाच",
+    subtitle: "| खतरा खुफिया",
+    heroTitle: "राष्ट्रीय क्रिप्टो-खतरा खुफिया नेटवर्क",
+    heroSub: "एआई-संचालित ब्लॉकचेन फोरेंसिक और विसंगति पहचान के माध्यम से भारत के डिजिटल वित्तीय बुनियादी ढांचे को सुरक्षित करना।",
+    alerts: "अलर्ट",
+    secure: "सुरक्षित ऑफ़लाइन",
+    about: "मंच के बारे में",
+    aboutText: "चेनवाच एक उन्नत एआई-संचालित ऑफ़लाइन खुफिया प्रणाली है जिसे अवैध क्रिप्टोकरेंसी लेनदेन यातायात की निगरानी, पता लगाने और विश्लेषण करने के लिए डिज़ाइन किया गया है।",
+    quickLinks: "त्वरित लिंक",
+    nodalAgency: "नोडल एजेंसी",
+    copyright: "© 2026 राष्ट्रीय तकनीकी अनुसंधान संगठन, भारत सरकार। सर्वाधिकार सुरक्षित।"
+  }
+};
+
 function useAPI(endpoint) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,50 +62,6 @@ function useAPI(endpoint) {
   return { data, loading, error };
 }
 
-function Topbar({ anomalyCount }) {
-  return (
-    <>
-      {/* Black Accessibility Bar */}
-      <div className="access-bar">
-        <span>Skip to Main Content</span>
-        <span>A- A A+</span>
-        <span>English | हिन्दी</span>
-      </div>
-      
-      {/* Dark Blue Government Header */}
-      <header className="topbar">
-        <div className="topbar-brand">
-          {/* Emblem filtered to be white on the dark blue background */}
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" 
-            alt="Satyameva Jayate" 
-            style={{ height: '56px', filter: 'brightness(0) invert(1)' }} 
-          />
-          <div className="brand-titles">
-            <div className="brand-goi">Government of India</div>
-            <div className="brand-name">National Technical Research Organisation</div>
-          </div>
-        </div>
-
-        <div className="topbar-actions" style={{ alignItems: 'center' }}>
-          <div className="system-title" style={{ fontSize: '16px', borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: '16px', marginRight: '4px' }}>
-            <span style={{ color: '#ffffff', fontWeight: 800 }}>ChainWatch</span>
-            <span style={{ color: '#94a3b8', fontWeight: 500, marginLeft: 8 }}>| Threat Intelligence</span>
-          </div>
-          {anomalyCount !== null && (
-            <span className="badge badge-danger" style={{ display: 'flex', alignItems: 'center', height: '32px' }}>
-              🚨 {anomalyCount} ALERTS
-            </span>
-          )}
-          <span className="badge badge-success" style={{ display: 'flex', alignItems: 'center', height: '32px' }}>
-            ✓ SECURE OFFLINE
-          </span>
-        </div>
-      </header>
-    </>
-  );
-}
-
 export default function App() {
   const { data: stats, loading: statsLoading } = useAPI('/stats');
   const { data: alerts, loading: alertsLoading } = useAPI('/anomalies?limit=50');
@@ -80,6 +72,11 @@ export default function App() {
   const [minConfidence, setMinConfidence] = useState(0);
   const [selectedCluster, setSelectedCluster] = useState(null);
 
+  // Accessibility States
+  const [lang, setLang] = useState('en');
+  const [zoom, setZoom] = useState(1);
+  const t = dict[lang]; // Translation helper
+
   const filteredAlerts = alerts?.filter(a => {
     if (a.confidence_score < minConfidence) return false;
     if (selectedCluster !== null && a.cluster_id !== selectedCluster) return false;
@@ -87,10 +84,63 @@ export default function App() {
   });
 
   return (
-    <div className="app-shell">
-      <Topbar anomalyCount={stats?.anomalies_detected ?? null} />
+    <div className="app-shell" style={{ zoom: zoom }}>
+      
+      {/* ── Accessibility Bar ── */}
+      <div className="access-bar">
+        <a href="#main-content" className="access-link">{t.skip}</a>
+        <div className="access-group">
+          <button onClick={() => setZoom(0.9)}>A-</button>
+          <button onClick={() => setZoom(1)}>A</button>
+          <button onClick={() => setZoom(1.1)}>A+</button>
+        </div>
+        <div className="access-group">
+          <button onClick={() => setLang('en')} className={lang === 'en' ? 'active' : ''}>English</button>
+          <span>|</span>
+          <button onClick={() => setLang('hi')} className={lang === 'hi' ? 'active' : ''}>हिन्दी</button>
+        </div>
+      </div>
+      
+      {/* ── Dark Blue Government Header ── */}
+      <header className="topbar">
+        <div className="topbar-brand">
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" 
+            alt="Satyameva Jayate" 
+            style={{ height: '56px', filter: 'brightness(0) invert(1)' }} 
+          />
+          <div className="brand-titles">
+            <div className="brand-goi">{t.gov}</div>
+            <div className="brand-name">{t.ntro}</div>
+          </div>
+        </div>
 
-      <main className="main-content">
+        <div className="topbar-actions">
+          <div className="system-title">
+            <span style={{ color: '#ffffff', fontWeight: 800 }}>{t.title}</span>
+            <span style={{ color: '#94a3b8', fontWeight: 500, marginLeft: 8 }}>{t.subtitle}</span>
+          </div>
+          {stats?.anomalies_detected && (
+            <span className="badge badge-danger">
+              🚨 {stats.anomalies_detected} {t.alerts}
+            </span>
+          )}
+          <span className="badge badge-success">
+            ✓ {t.secure}
+          </span>
+        </div>
+      </header>
+
+      {/* ── Hero Section ── */}
+      <section className="hero-section">
+        <div className="hero-overlay">
+          <h1>{t.heroTitle}</h1>
+          <p>{t.heroSub}</p>
+        </div>
+      </section>
+
+      {/* ── Main Dashboard Content ── */}
+      <main id="main-content" className="main-content">
         <MetricCards stats={statsLoading ? null : stats} />
         
         <ChartsView stats={stats} clusters={clusters} />
@@ -143,13 +193,41 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="footer">
-        <span>SIH 2024 (Problem Statement 26146) — ChainWatch Prototype</span>
-        <div className="footer-tech">
-          <span className="tech-tag">Neo4j</span>
-          <span className="tech-tag">Isolation Forest</span>
-          <span className="tech-tag">FastAPI</span>
-          <span className="tech-tag">React + Vite</span>
+      {/* ── Thick Official Footer ── */}
+      <footer className="footer-main">
+        <div className="footer-columns">
+          <div className="footer-col">
+            <h3>{t.about}</h3>
+            <p>{t.aboutText}</p>
+          </div>
+          <div className="footer-col">
+            <h3>{t.quickLinks}</h3>
+            <ul>
+              <li><a href="#">Dashboard Home</a></li>
+              <li><a href="#">Generate Intelligence Report</a></li>
+              <li><a href="#">Threat Pattern Database</a></li>
+              <li><a href="https://github.com/Shivam007kumar/ChainWatch" target="_blank" rel="noopener noreferrer">User Manual & API Docs</a></li>
+            </ul>
+          </div>
+          <div className="footer-col">
+            <h3>{t.nodalAgency}</h3>
+            <p>
+              <strong>National Technical Research Organisation</strong><br/>
+              Block-III, Old JNU Campus<br/>
+              New Delhi - 110067<br/>
+              Email: cyber-intel@ntro.gov.in
+            </p>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>{t.copyright}</p>
+          <div className="footer-bottom-links">
+            <a href="https://github.com/Shivam007kumar/ChainWatch" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+            <span>|</span>
+            <a href="https://github.com/Shivam007kumar/ChainWatch" target="_blank" rel="noopener noreferrer">Terms of Use</a>
+            <span>|</span>
+            <a href="https://github.com/Shivam007kumar/ChainWatch" target="_blank" rel="noopener noreferrer">Security Policy</a>
+          </div>
         </div>
       </footer>
     </div>
