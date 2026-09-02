@@ -27,39 +27,46 @@ function useAPI(endpoint) {
 }
 
 function Topbar({ anomalyCount }) {
-  const [time, setTime] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
   return (
-    <header className="topbar">
-      <div className="topbar-brand">
-        <div className="brand-icon">⛓</div>
-        <span className="brand-name">ChainWatch</span>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 4 }}>Intelligence Platform</span>
+    <>
+      {/* Black Accessibility Bar */}
+      <div className="access-bar">
+        <span>Skip to Main Content</span>
+        <span>A- A A+</span>
+        <span>English | हिन्दी</span>
       </div>
+      
+      {/* Dark Blue Government Header */}
+      <header className="topbar">
+        <div className="topbar-brand">
+          {/* Emblem filtered to be white on the dark blue background */}
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" 
+            alt="Satyameva Jayate" 
+            style={{ height: '56px', filter: 'brightness(0) invert(1)' }} 
+          />
+          <div className="brand-titles">
+            <div className="brand-goi">Government of India</div>
+            <div className="brand-name">National Technical Research Organisation</div>
+          </div>
+        </div>
 
-      <div className="topbar-status">
-        <div className="status-dot" />
-        <span>Neo4j-backed · Offline pipeline</span>
-        <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>
-          {time.toLocaleTimeString('en-IN', { hour12: false })}
-        </span>
-      </div>
-
-      <div className="topbar-actions">
-        {anomalyCount !== null && (
-          <span className="badge badge-danger">
-            🚨 {anomalyCount} ALERTS
+        <div className="topbar-actions" style={{ alignItems: 'center' }}>
+          <div className="system-title" style={{ fontSize: '16px', borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: '16px', marginRight: '4px' }}>
+            <span style={{ color: '#ffffff', fontWeight: 800 }}>ChainWatch</span>
+            <span style={{ color: '#94a3b8', fontWeight: 500, marginLeft: 8 }}>| Threat Intelligence</span>
+          </div>
+          {anomalyCount !== null && (
+            <span className="badge badge-danger" style={{ display: 'flex', alignItems: 'center', height: '32px' }}>
+              🚨 {anomalyCount} ALERTS
+            </span>
+          )}
+          <span className="badge badge-success" style={{ display: 'flex', alignItems: 'center', height: '32px' }}>
+            ✓ SECURE OFFLINE
           </span>
-        )}
-        <span className="badge badge-success">
-          ✓ OFFLINE MODE
-        </span>
-      </div>
-    </header>
+        </div>
+      </header>
+    </>
   );
 }
 
@@ -69,14 +76,10 @@ export default function App() {
   const { data: clusters, loading: clustersLoading } = useAPI('/clusters');
   const { data: graphData, loading: graphLoading } = useAPI('/graph');
 
-  // Cross-component state
   const [highlightedWallet, setHighlightedWallet] = useState(null);
-
-  // Client-side filtering state
   const [minConfidence, setMinConfidence] = useState(0);
   const [selectedCluster, setSelectedCluster] = useState(null);
 
-  // Filter alerts
   const filteredAlerts = alerts?.filter(a => {
     if (a.confidence_score < minConfidence) return false;
     if (selectedCluster !== null && a.cluster_id !== selectedCluster) return false;
@@ -88,16 +91,11 @@ export default function App() {
       <Topbar anomalyCount={stats?.anomalies_detected ?? null} />
 
       <main className="main-content">
-        {/* ── Metric Cards ── */}
         <MetricCards stats={statsLoading ? null : stats} />
-
-        {/* ── Analytical Charts (Donut & Bar only) ── */}
+        
         <ChartsView stats={stats} clusters={clusters} />
 
-        {/* ── Dashboard Grid: Two Column (Graph & Alerts) ── */}
         <div className="dashboard-grid two-column">
-          
-          {/* Left: Graph Panel */}
           <div className="card graph-card">
             <div className="card-header">
               <div className="card-title">
@@ -105,10 +103,10 @@ export default function App() {
                 Entity Correlation Graph
               </div>
               <div className="graph-legend">
-                <div className="legend-item"><div className="legend-dot" style={{ background: '#3b82f6' }} /> IP Node</div>
-                <div className="legend-item"><div className="legend-dot" style={{ background: '#a855f7' }} /> Transaction</div>
-                <div className="legend-item"><div className="legend-dot" style={{ background: '#00d4aa' }} /> Wallet</div>
-                <div className="legend-item"><div className="legend-dot" style={{ background: '#ff4d6d' }} /> Flagged</div>
+                <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--gov-blue)' }} /> IP Node</div>
+                <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--text-muted)' }} /> Transaction</div>
+                <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--gov-green)' }} /> Wallet</div>
+                <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--gov-red)' }} /> Flagged</div>
               </div>
             </div>
             <div className="graph-body">
@@ -120,15 +118,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right: Alert Panel */}
           <div className="card alert-panel">
             <div className="card-header">
               <div className="card-title">
                 <span className="card-title-icon">🚨</span>
-                Flagged Entities Watchlist & AI Insights
+                Threat Watchlist & AI Insights
               </div>
               {filteredAlerts && (
-                <span className="count-chip">{filteredAlerts.length}</span>
+                <div className="badge badge-danger">{filteredAlerts.length} FOUND</div>
               )}
             </div>
             <AlertTable 
@@ -147,13 +144,12 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        <span>ChainWatch v1.0 — NTRO Problem Statement Demo — Sept 5, 2026</span>
+        <span>SIH 2024 (Problem Statement 26146) — ChainWatch Prototype</span>
         <div className="footer-tech">
-          <span className="tech-tag">Neo4j 5.12</span>
+          <span className="tech-tag">Neo4j</span>
           <span className="tech-tag">Isolation Forest</span>
           <span className="tech-tag">FastAPI</span>
           <span className="tech-tag">React + Vite</span>
-          <span className="tech-tag">100% Offline</span>
         </div>
       </footer>
     </div>

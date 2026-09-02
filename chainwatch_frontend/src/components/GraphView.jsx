@@ -2,11 +2,10 @@ import { useEffect, useRef, useCallback, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
 const NODE_COLORS = {
-  ip:          { normal: '#3b82f6', flagged: '#ef4444' },
-  transaction: { normal: '#a855f7', flagged: '#c084fc' },
-  wallet:      { normal: '#00d4aa', flagged: '#ff4d6d' },
+  ip:          { normal: '#003366', flagged: '#cc0000' }, // Gov Blue / Red
+  transaction: { normal: '#6b7280', flagged: '#9ca3af' }, // Gray
+  wallet:      { normal: '#138808', flagged: '#FF9933' }, // Gov Green / Saffron
 };
-
 const NODE_SIZE = {
   ip: 4,
   transaction: 6,
