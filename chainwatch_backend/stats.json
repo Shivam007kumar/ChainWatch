@@ -1,7 +1,7 @@
 {
-  "total_transactions": 200,
-  "total_wallets": 45,
-  "anomalies_detected": 7,
-  "high_risk_wallets": 3,
+  "total_transactions": 10000,
+  "total_wallets": 800,
+  "anomalies_detected": 80,
+  "high_risk_wallets": 15,
   "clusters_identified": 6
 }
