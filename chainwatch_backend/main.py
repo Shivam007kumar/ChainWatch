@@ -1,206 +1,262 @@
-"""
-ChainWatch — FastAPI Backend
-=============================
-Async API serving ML results to the React dashboard.
-Run: uvicorn main:app --reload --host 0.0.0.0 --port 8000
-"""
-
 import json
-import asyncio
+import ast
+import io
 from pathlib import Path
+from collections import defaultdict, Counter
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
+import pandas as pd
+import numpy as np
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from sklearn.ensemble import IsolationForest
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import maxminddb
+import ipaddress
+from weasyprint import HTML
 
-# ── App Setup ───────────────────────────────────────────────────────────────
+# --- APP SETUP ---
+app = FastAPI(title="ChainWatch Core Engine")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-app = FastAPI(
-    title="ChainWatch Intelligence API",
-    description=(
-        "**ChainWatch** is an offline Bitcoin transaction analysis platform. "
-        "It correlates network-layer (IP/Port) data with blockchain data "
-        "(wallets, TXIDs) to detect anomalies using Isolation Forest ML.\n\n"
-        "All computation runs 100% offline — no cloud dependencies."
-    ),
-    version="1.0.0",
-    contact={"name": "ChainWatch Team", "email": "chainwatch@hackathon.local"},
-)
+BASE_DIR = Path(__file__).resolve().parent
+CITY_DB = BASE_DIR / "database" / "GeoIP-City.mmdb"
+ASN_DB = BASE_DIR / "database" / "GeoIP-ASN.mmdb"
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# --- TEAMMATE's OFFLINE IP LOGIC ---
+try:
+    city_reader = maxminddb.open_database(str(CITY_DB))
+    asn_reader = maxminddb.open_database(str(ASN_DB))
+    print("✅ Offline GeoIP & ASN Databases Loaded.")
+except Exception as e:
+    print(f"⚠️ Warning: MaxMind DBs not found in {BASE_DIR}/database/. Using fallback logic.")
+    city_reader, asn_reader = None, None
 
-BASE_DIR = Path(__file__).parent
+def lookup_ip(ip):
+    result = {"state": "Unknown", "asn": "N/A", "org": "N/A"}
+    try:
+        if city_reader:
+            data = city_reader.get(ip)
+            if data and "subdivisions" in data:
+                result["state"] = data["subdivisions"][0].get("names", {}).get("en", "Unknown")
+        if asn_reader:
+            data = asn_reader.get(ip)
+            if data:
+                result["asn"] = f"AS{data.get('autonomous_system_number', '')}"
+                result["org"] = data.get("autonomous_system_organization", "N/A")
+    except Exception:
+        pass
+    return result
 
-# ── Pydantic Models ──────────────────────────────────────────────────────────
-
-class DashboardStats(BaseModel):
-    total_transactions: int = Field(..., description="Total Bitcoin transactions analyzed")
-    total_wallets: int = Field(..., description="Total unique wallet addresses observed")
-    anomalies_detected: int = Field(..., description="Wallets flagged as anomalous by Isolation Forest")
-    high_risk_wallets: int = Field(..., description="High-confidence anomalies (≥85% confidence)")
-    clusters_identified: int = Field(..., description="Distinct entity clusters from K-Means")
-
+# --- MODELS ---
 class AnomalyAlert(BaseModel):
-    wallet_address: str = Field(..., description="The flagged Bitcoin wallet address")
-    confidence_score: float = Field(..., description="ML confidence score (0–100%)")
-    cluster_id: int = Field(..., description="K-Means cluster this wallet belongs to")
-    cluster_name: str = Field(..., description="Human-readable cluster label")
-    reason: str = Field(..., description="Plain-English explanation of why this was flagged")
-    tx_count: int = Field(..., description="Number of transactions involving this wallet")
-    total_volume_btc: float = Field(..., description="Total BTC volume through this wallet")
-    unique_ip_count: int = Field(..., description="Number of distinct IPs linked to this wallet")
-    high_risk_hits: int = Field(..., description="Transactions from high-risk jurisdictions")
-    sample_txid: str = Field(..., description="A sample Transaction ID linked to this wallet")
+    wallet_address: str
+    confidence_score: float
+    cluster_id: int
+    cluster_name: str
+    reason: str
+    tx_count: int
+    total_volume_btc: float
+    unique_ip_count: int
+    primary_state: Optional[str] = "Unknown"
+    asn: Optional[str] = "N/A"
+    isp: Optional[str] = "N/A"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+# --- ENDPOINTS ---
 
-class GraphNode(BaseModel):
-    id: str
-    type: str = Field(..., description="'wallet', 'ip', or 'transaction'")
-    label: str
-    flagged: bool = False
-    cluster: Optional[int] = None
+@app.get("/")
+def health_check():
+    return {"status": "ChainWatch Engine Active"}
 
-class GraphLink(BaseModel):
-    source: str
-    target: str
-    type: str = Field(..., description="Relationship type: BROADCASTED, INPUT_TO_TX, etc.")
+@app.get("/api/v1/stats")
+def get_stats():
+    try:
+        with open(BASE_DIR / "stats.json") as f:
+            return json.load(f)
+    except:
+        return {"total_transactions": 0, "total_wallets": 0, "anomalies_detected": 0}
 
-class GraphData(BaseModel):
-    nodes: List[GraphNode]
-    links: List[GraphLink]
+@app.get("/api/v1/anomalies", response_model=List[AnomalyAlert])
+def get_anomalies():
+    try:
+        with open(BASE_DIR / "anomaly_results.json") as f:
+            return json.load(f)
+    except:
+        return []
 
-# ── Helper ───────────────────────────────────────────────────────────────────
-
-def load_json(filename: str) -> dict | list:
-    path = BASE_DIR / filename
-    if not path.exists():
-        raise HTTPException(
-            status_code=503,
-            detail=f"{filename} not found. Run `python 3_run_ml.py` first.",
-        )
-    with open(path) as f:
-        return json.load(f)
-
-# ── Routes ───────────────────────────────────────────────────────────────────
-
-@app.get("/", tags=["Health"])
-async def root():
-    """Health check endpoint."""
-    return {"status": "online", "service": "ChainWatch Intelligence API v1.0"}
-
-
-@app.get("/api/v1/stats", response_model=DashboardStats, tags=["Dashboard"])
-async def get_stats():
+@app.post("/api/v1/ingest")
+async def ingest_ledger(file: UploadFile = File(...)):
     """
-    Returns high-level dashboard statistics.
-
-    These are pre-computed from the ML pipeline (`3_run_ml.py`) and served
-    from a local cache (`stats.json`) for zero-latency dashboard loading.
+    Receives CSV from React Workspace, runs ML pipeline, and updates JSONs.
     """
-    await asyncio.sleep(0.1)  # Simulate minimal async I/O
-    return load_json("stats.json")
+    print(f"📥 Ingesting ledger: {file.filename}")
+    contents = await file.read()
+    df = pd.read_csv(io.BytesIO(contents))
+    
+    # 1. Feature Engineering
+    wallet_stats = defaultdict(lambda: {
+        "tx_count": 0, "volume": 0.0, "ips": set(), "states": list(), "asns": list(), "orgs": list()
+    })
+    
+    for _, row in df.iterrows():
+        src_ip = row['src_ip']
+        
+        # Use Teammate's logic or fallback to CSV state
+        ip_info = lookup_ip(src_ip)
+        state = ip_info["state"] if ip_info["state"] != "Unknown" else row.get('geo_state', 'Unknown')
+        asn = ip_info["asn"]
+        org = ip_info["org"]
+
+        inputs = ast.literal_eval(row['input_addresses'])
+        amounts = ast.literal_eval(row['input_amounts'])
+        
+        for wallet, amt in zip(inputs, amounts):
+            ws = wallet_stats[wallet]
+            ws["tx_count"] += 1
+            ws["volume"] += float(amt)
+            ws["ips"].add(src_ip)
+            ws["states"].append(state)
+            ws["asns"].append(asn)
+            ws["orgs"].append(org)
+            
+    wallets = list(wallet_stats.keys())
+    features = np.array([[s["tx_count"], s["volume"], len(s["ips"])] for s in wallet_stats.values()])
+    
+    # 2. Machine Learning (Isolation Forest & K-Means)
+    X_scaled = StandardScaler().fit_transform(features)
+    
+    iso = IsolationForest(n_estimators=200, contamination=0.10, random_state=42)
+    iso_labels = iso.fit_predict(X_scaled)
+    iso_scores = iso.decision_function(X_scaled)
+    
+    kmeans = KMeans(n_clusters=min(6, len(wallets)), random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(X_scaled)
+    CLUSTER_NAMES = ["Micro-Transactor Ring", "High-Volume Laundering Node", "Multi-Hop Relay Cluster", "Dormant-then-Active", "Cross-Border Cell", "Retail Node"]
+
+    # 3. Build Results
+    anomaly_results = []
+    flagged_idx = [i for i in range(len(wallets)) if iso_labels[i] == -1]
+    
+    if flagged_idx:
+        lo, hi = min(iso_scores[flagged_idx]), max(iso_scores[flagged_idx])
+        score_range = (hi - lo) if hi != lo else 1e-9
+    else:
+        lo, hi, score_range = 0, 0, 1
+        
+    for i in flagged_idx:
+        w = wallets[i]
+        s = wallet_stats[w]
+        conf = round(60 + 39 * (hi - iso_scores[i]) / score_range, 1)
+        
+        primary_state = Counter(s["states"]).most_common(1)[0][0]
+        primary_asn = Counter(s["asns"]).most_common(1)[0][0]
+        primary_org = Counter(s["orgs"]).most_common(1)[0][0]
+        
+        anomaly_results.append({
+            "wallet_address": w,
+            "confidence_score": conf,
+            "cluster_id": int(cluster_labels[i]),
+            "cluster_name": CLUSTER_NAMES[int(cluster_labels[i])],
+            "reason": f"AI detected {s['tx_count']} rapid TXNs masking {s['volume']:.2f} BTC across {len(s['ips'])} distinct IPs.",
+            "tx_count": s["tx_count"],
+            "total_volume_btc": round(s["volume"], 4),
+            "unique_ip_count": len(s["ips"]),
+            "primary_state": primary_state,
+            "asn": primary_asn,
+            "isp": primary_org
+        })
+        
+    anomaly_results.sort(key=lambda x: x["confidence_score"], reverse=True)
+    
+    # Save Outputs
+    with open(BASE_DIR / "anomaly_results.json", "w") as f:
+        json.dump(anomaly_results, f, indent=2)
+        
+    with open(BASE_DIR / "stats.json", "w") as f:
+        json.dump({
+            "total_transactions": len(df),
+            "total_wallets": len(wallets),
+            "anomalies_detected": len(anomaly_results)
+        }, f, indent=2)
+        
+    return {"message": "Ingestion and ML Analysis Complete", "anomalies_found": len(anomaly_results)}
 
 
-@app.get("/api/v1/anomalies", response_model=List[AnomalyAlert], tags=["Intelligence"])
-async def get_anomalies(limit: int = 50, min_confidence: float = 0.0):
+@app.get("/api/v1/report/{wallet_id}")
+def generate_pdf_report(wallet_id: str):
     """
-    Returns the ranked list of anomalous wallet addresses detected by **Isolation Forest**.
-
-    Results are sorted by confidence score (descending). Each entry includes:
-    - A machine-learning confidence score
-    - The K-Means cluster the wallet belongs to
-    - A plain-English reason explaining *why* it was flagged
-    - Key behavioral metrics (tx count, volume, IP diversity)
-
-    **Parameters:**
-    - `limit`: Max results to return (default: 50)
-    - `min_confidence`: Filter by minimum confidence score (0–100)
-    """
-    await asyncio.sleep(0.2)  # Simulate async ML inference delay
-    results: list = load_json("anomaly_results.json")
-    filtered = [r for r in results if r["confidence_score"] >= min_confidence]
-    return filtered[:limit]
-
-
-@app.get("/api/v1/graph", response_model=GraphData, tags=["Graph"])
-async def get_graph():
-    """
-    Returns pre-computed graph data (nodes + edges) for **react-force-graph-2d**.
-
-    The graph represents the correlation between:
-    - 🟠 **IP nodes** — network source/destination addresses
-    - 🔵 **Transaction nodes** — Bitcoin TXIDs
-    - 🟢 **Wallet nodes** — Bitcoin wallet addresses
-
-    Flagged nodes (detected by ML) are marked with `flagged: true` and
-    rendered in red on the frontend.
-    """
-    await asyncio.sleep(0.15)
-    return load_json("graph_data.json")
-
-
-@app.get("/api/v1/graph/live", tags=["Graph"])
-async def get_live_graph():
-    """
-    Queries **live Neo4j** graph database for real-time data.
-
-    This endpoint directly queries the Neo4j Docker container
-    (bolt://localhost:7687) and returns raw node/edge data.
-    Use this to demonstrate live database connectivity during the pitch.
+    Generates an official NTRO PDF Dossier for a specific threat.
     """
     try:
-        from neo4j import GraphDatabase
-        driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "hackathon2026"))
-        with driver.session() as session:
-            result = session.run("""
-                MATCH p=(ip:IP)-[]-(t:Transaction)-[]-(w:Wallet)
-                RETURN ip.ip AS src_ip, ip.country AS country,
-                       t.txid AS txid, t.timestamp AS ts,
-                       w.address AS wallet
-                LIMIT 100
-            """)
-            records = [dict(r) for r in result]
-        driver.close()
-        return {"source": "neo4j_live", "count": len(records), "records": records}
+        with open(BASE_DIR / "anomaly_results.json") as f:
+            anomalies = json.load(f)
+            
+        threat = next((a for a in anomalies if a["wallet_address"] == wallet_id), None)
+        if not threat:
+            raise HTTPException(status_code=404, detail="Threat not found")
+            
+        # Official Government HTML Template
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: 'Helvetica', sans-serif; color: #111827; padding: 40px; }}
+                .header {{ border-bottom: 4px solid #FF9933; padding-bottom: 20px; margin-bottom: 30px; }}
+                h1 {{ color: #003366; margin: 0; font-size: 24px; text-transform: uppercase; }}
+                h2 {{ color: #cc0000; font-size: 18px; margin-top: 5px; }}
+                .box {{ background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; margin-bottom: 20px; border-radius: 4px; }}
+                .label {{ font-weight: bold; color: #64748b; font-size: 12px; text-transform: uppercase; }}
+                .value {{ font-family: monospace; font-size: 16px; font-weight: bold; margin-bottom: 15px; display: block; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Government of India | NTRO</h1>
+                <h2>CLASSIFIED: THREAT INTELLIGENCE DOSSIER</h2>
+            </div>
+            
+            <p><strong>Date Generated:</strong> {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            
+            <div class="box">
+                <span class="label">Target Entity (Wallet Address)</span>
+                <span class="value">{threat['wallet_address']}</span>
+                
+                <span class="label">AI Confidence Score</span>
+                <span class="value" style="color: #cc0000;">{threat['confidence_score']}%</span>
+                
+                <span class="label">Behavioral Classification</span>
+                <span class="value">{threat['cluster_name']}</span>
+            </div>
+            
+            <div class="box">
+                <h3>Geographical & Network Footprint</h3>
+                <span class="label">Primary Operating Jurisdiction</span>
+                <span class="value">{threat['primary_state'].upper()}</span>
+                
+                <span class="label">Primary ISP / ASN</span>
+                <span class="value">{threat['isp']} ({threat['asn']})</span>
+            </div>
+            
+            <div class="box">
+                <h3>AI Evidence Log</h3>
+                <p style="font-family: monospace;">{threat['reason']}</p>
+            </div>
+            
+            <p style="text-align: center; color: #94a3b8; font-size: 10px; margin-top: 50px;">
+                Generated by ChainWatch Core Engine. Document is subject to Official Secrets Act.
+            </p>
+        </body>
+        </html>
+        """
+        
+        pdf_path = BASE_DIR / f"NTRO_Report_{wallet_id[:8]}.pdf"
+        HTML(string=html_content).write_pdf(pdf_path)
+        
+        return FileResponse(pdf_path, filename=f"NTRO_Threat_Report_{wallet_id[:8]}.pdf", media_type='application/pdf')
+        
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Neo4j unavailable: {str(e)}")
-
-
-@app.get("/api/v1/clusters", tags=["Intelligence"])
-async def get_clusters():
-    """
-    Returns a summary of the **K-Means clusters** identified in the transaction graph.
-
-    6 clusters are detected, each representing a different behavioral pattern
-    of wallet activity (e.g., micro-transactor rings, high-volume laundering nodes).
-    """
-    await asyncio.sleep(0.1)
-    results: list = load_json("anomaly_results.json")
-    clusters: dict = {}
-    for r in results:
-        cid = r["cluster_id"]
-        if cid not in clusters:
-            clusters[cid] = {
-                "cluster_id": cid,
-                "cluster_name": r["cluster_name"],
-                "wallet_count": 0,
-                "avg_confidence": 0.0,
-                "scores": [],
-            }
-        clusters[cid]["wallet_count"] += 1
-        clusters[cid]["scores"].append(r["confidence_score"])
-
-    summary = []
-    for cid, c in clusters.items():
-        summary.append({
-            "cluster_id": cid,
-            "cluster_name": c["cluster_name"],
-            "wallet_count": c["wallet_count"],
-            "avg_confidence": round(sum(c["scores"]) / len(c["scores"]), 1),
-        })
-    return sorted(summary, key=lambda x: x["avg_confidence"], reverse=True)
+        raise HTTPException(status_code=500, detail=str(e))
