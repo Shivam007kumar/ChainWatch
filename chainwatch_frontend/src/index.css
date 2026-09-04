@@ -243,3 +243,198 @@ body { font-family: var(--font); background: var(--bg-primary); color: var(--tex
   0% { transform: scale(0.5); opacity: 0.8; }
   100% { transform: scale(2.5); opacity: 0; }
 }
+
+/* ── Navbar Shield & Ingest Button ── */
+.shield-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(19, 136, 8, 0.15);
+  border: 1px solid var(--gov-green);
+  color: #a7f3d0;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.pulse-shield {
+  animation: pulseShield 2s infinite;
+}
+@keyframes pulseShield {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ingest-btn {
+  background: #ffffff;
+  color: var(--gov-blue);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.ingest-btn:hover {
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+/* ── Flashcard Infinite Scroll Fix ── */
+.ticker-track { 
+  display: flex; 
+  gap: 16px; 
+  padding-left: 16px; 
+  animation: scrollTicker 60s linear infinite; 
+  cursor: grab;
+}
+.ticker-track:active { cursor: grabbing; }
+/* Allows user to drag/scroll manually with mouse */
+.ticker-wrapper { overflow-x: auto; scrollbar-width: none; }
+.ticker-wrapper::-webkit-scrollbar { display: none; }
+
+/* ── Legacy / Bureaucratic Metric Cards ── */
+.metric-card-flat {
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  border-top: 4px solid var(--gov-blue);
+  padding: 20px;
+  border-radius: 2px;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.05);
+}
+.metric-label-flat { font-size: 11px; font-weight: 800; color: #475569; letter-spacing: 1px; margin-bottom: 12px; }
+.metric-value-flat { font-size: 32px; font-family: var(--mono); font-weight: 700; color: #0f172a; }
+.metric-sub-flat { font-size: 11px; color: #64748b; margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 8px; }
+
+/* ── Legacy Alert Table ── */
+.alert-row-flat { padding: 16px; border-bottom: 1px solid #cbd5e1; cursor: pointer; background: #ffffff; transition: background 0.1s; }
+.alert-row-flat:hover { background: #f1f5f9; }
+.alert-row-flat.selected { background: #fee2e2; border-left: 4px solid #cc0000; }
+.alert-header-flat { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.alert-rank-flat { font-size: 10px; font-weight: 800; color: #64748b; }
+.alert-score-flat { font-size: 11px; font-weight: 800; color: #cc0000; font-family: var(--mono); }
+.alert-wallet-flat { font-family: var(--mono); font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 8px; word-break: break-all; }
+.alert-details-flat { font-size: 11px; color: #475569; line-height: 1.6; background: #f8fafc; padding: 8px; border: 1px solid #e2e8f0; }
+
+/* ── Fixed Infinite Scroll & Flat Flashcards ── */
+.ticker-wrapper { background: #f1f5f9; border-bottom: 1px solid #94a3b8; padding: 12px 0; overflow: hidden; }
+.ticker-track { display: flex; gap: 16px; width: max-content; animation: scrollTicker 30s linear infinite; }
+.ticker-track:hover { animation-play-state: paused; }
+.flash-card-flat { min-width: 240px; background: #ffffff; border: 1px solid #94a3b8; padding: 12px; border-radius: 2px; }
+.flash-card-flat.danger { background: #fee2e2; border: 2px solid #cc0000; }
+.fc-header-flat { display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; margin-bottom: 8px; }
+.fc-title-flat { font-size: 11px; font-weight: 800; color: #0f172a; }
+.fc-dot.red { background: #cc0000; }
+.fc-body-flat { font-family: var(--mono); font-size: 11px; color: #334155; line-height: 1.6; }
+.fc-alert-text { color: #cc0000; font-weight: bold; margin-top: 4px; }
+
+/* ── Executive Map Layout ── */
+.map-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.hybrid-map {
+  flex: 1;
+  background: #ffffff;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* ── ANALYST WORKSPACE (NotebookLM Style) ── */
+.workspace-layout { display: flex; flex-direction: column; height: 100vh; background: #020617; color: #f8fafc; overflow: hidden; }
+.workspace-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: #0f172a; border-bottom: 1px solid #1e293b; }
+.ws-brand { font-size: 14px; letter-spacing: 1px; }
+.ws-back { color: #94a3b8; cursor: pointer; margin-right: 24px; font-weight: 700; font-size: 12px; }
+.ws-back:hover { color: #ffffff; }
+.workspace-body { display: flex; flex: 1; overflow: hidden; }
+.ws-pane { display: flex; flex-direction: column; border-right: 1px solid #1e293b; }
+.ws-left { width: 300px; background: #0f172a; padding: 20px; }
+.ws-center { flex: 1; display: flex; flex-direction: column; }
+.ws-right { width: 350px; background: #0f172a; border-right: none; }
+.ws-pane-title { font-size: 11px; font-weight: 800; color: #64748b; letter-spacing: 1px; margin-bottom: 16px; }
+.upload-zone { display: flex; flex-direction: column; gap: 16px; }
+.upload-label { border: 2px dashed #334155; padding: 30px 20px; text-align: center; font-size: 13px; color: #94a3b8; cursor: pointer; border-radius: 4px; background: #020617; transition: 0.2s; }
+.upload-label:hover { border-color: var(--gov-blue); color: #ffffff; }
+.ws-btn { background: var(--gov-blue); color: white; border: none; padding: 12px; font-weight: 700; cursor: pointer; border-radius: 2px; letter-spacing: 1px; }
+.ws-btn.disabled { background: #334155; cursor: not-allowed; color: #64748b; }
+.ws-instructions { margin-top: 32px; font-size: 12px; color: #64748b; line-height: 1.8; }
+.ws-map-container { flex: 2; position: relative; background: #020617; border-bottom: 1px solid #1e293b; }
+.state-badge { position: absolute; top: 16px; right: 16px; background: #cc0000; color: white; padding: 6px 12px; font-size: 11px; font-weight: 800; border-radius: 2px; }
+.ws-terminal { flex: 1; background: #000000; padding: 16px; display: flex; flex-direction: column; }
+.terminal-output { flex: 1; overflow-y: auto; font-family: var(--mono); font-size: 12px; line-height: 1.6; }
+.log-info { color: #a7f3d0; }
+.log-succ { color: #34d399; font-weight: bold; }
+.log-err { color: #f87171; }
+.ws-empty { padding: 20px; color: #64748b; font-size: 13px; text-align: center; margin-top: 50px; }
+.ws-suspect-list { padding: 16px; overflow-y: auto; flex: 1; }
+.ws-suspect-card { background: #1e293b; padding: 16px; margin-bottom: 12px; border-left: 4px solid #cc0000; border-radius: 2px; }
+.ws-suspect-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; font-weight: 800; color: #f87171; }
+.ws-suspect-wallet { font-family: var(--mono); font-size: 12px; word-break: break-all; margin-bottom: 8px; }
+.ws-suspect-details { font-size: 11px; color: #94a3b8; line-height: 1.6; }
+.report-btn { background: #334155; color: white; border: none; padding: 4px 8px; font-size: 10px; cursor: pointer; border-radius: 2px; }
+.report-btn:hover { background: var(--gov-blue); }
+
+/* ── UI Fixes & Tooltips ── */
+.map-tooltip { position: absolute; top: 16px; right: 16px; z-index: 10; background: #ffffff; color: #0f172a; padding: 6px 12px; border-radius: 2px; font-size: 12px; font-weight: 800; border: 1px solid #000000; box-shadow: 2px 2px 0px rgba(0,0,0,0.1); text-transform: uppercase; }
+.clear-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 4px 8px; font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; border-radius: 2px; }
+.clear-btn:hover { background: #e2e8f0; color: #0f172a; }
+
+/* ── ANALYST WORKSPACE (Light Theme Bureaucratic) ── */
+.workspace-layout { display: flex; flex-direction: column; height: 100vh; background: #f8fafc; color: #0f172a; overflow: hidden; }
+.workspace-layout .ws-pane { background: #ffffff; border-right: 1px solid #cbd5e1; }
+.workspace-layout .ws-left { width: 300px; padding: 20px; background: #f1f5f9; }
+.workspace-layout .ws-center { flex: 1; display: flex; flex-direction: column; }
+.workspace-layout .ws-right { width: 380px; border-right: none; padding: 20px; }
+.workspace-layout .ws-pane-title { font-size: 11px; font-weight: 800; color: #475569; letter-spacing: 1px; margin-bottom: 16px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
+.workspace-layout .upload-zone { display: flex; flex-direction: column; gap: 16px; }
+.workspace-layout .upload-label { border: 2px dashed #94a3b8; padding: 30px 20px; text-align: center; font-size: 12px; font-weight: 700; color: #475569; cursor: pointer; background: #ffffff; }
+.workspace-layout .upload-label:hover { border-color: var(--gov-blue); color: var(--gov-blue); }
+.workspace-layout .ws-btn { background: var(--gov-blue); color: white; border: none; padding: 12px; font-weight: 800; cursor: pointer; letter-spacing: 1px; }
+.workspace-layout .ws-btn.disabled { background: #cbd5e1; cursor: not-allowed; color: #94a3b8; }
+.workspace-layout .ws-instructions { margin-top: 32px; font-size: 11px; color: #64748b; line-height: 1.8; }
+.workspace-layout .ws-map-container { flex: 2; position: relative; border-bottom: 1px solid #cbd5e1; background: #ffffff; }
+.workspace-layout .ws-terminal { flex: 1; background: #0f172a; padding: 16px; display: flex; flex-direction: column; }
+.workspace-layout .terminal-output { flex: 1; overflow-y: auto; font-family: var(--mono); font-size: 12px; line-height: 1.6; }
+.workspace-layout .log-info { color: #cbd5e1; }
+.workspace-layout .log-succ { color: #34d399; font-weight: bold; }
+.workspace-layout .log-err { color: #f87171; }
+.workspace-layout .ws-empty { padding: 20px; color: #64748b; font-size: 12px; text-align: center; margin-top: 50px; font-style: italic; }
+.workspace-layout .ws-suspect-list { overflow-y: auto; flex: 1; padding-right: 8px; }
+.workspace-layout .report-btn { background: #ffffff; border: 1px solid #94a3b8; color: #0f172a; padding: 6px 12px; font-size: 10px; font-weight: 800; cursor: pointer; margin-top: 8px; width: 100%; box-shadow: 2px 2px 0px rgba(0,0,0,0.05); }
+.workspace-layout .report-btn:hover { background: #f1f5f9; }
+
+/* Keep workspace logs inside their pane as entries arrive. */
+.workspace-layout .workspace-body,
+.workspace-layout .ws-pane,
+.workspace-layout .ws-center,
+.workspace-layout .ws-terminal { min-height: 0; }
+.workspace-layout .ws-terminal { overflow: hidden; }
+.workspace-layout .terminal-output { min-height: 0; overflow-y: auto; }
+
+.top-states-signator {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 10;
+  max-width: min(70%, 430px);
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #000000;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+.top-states-pulse {
+  display: inline-block;
+  margin-right: 5px;
+  color: #cc0000;
+  animation: topStatePulse 1.2s ease-in-out infinite;
+}
+.top-states-list { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 5px; color: #475569; font-family: var(--mono); font-size: 9px; }
+@keyframes topStatePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
