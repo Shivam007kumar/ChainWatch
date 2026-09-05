@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 import MetricCards from './components/MetricCards';
 import AlertTable from './components/AlertTable';
 import INDIA_GEO_JSON from './india.json';
-import { STATE_COORDS, generateStateDots } from './mapUtils';
+import { getStateCenter, getWalletDots } from './mapUtils';
 import './index.css';
 
 const API = 'http://localhost:8000/api/v1';
@@ -37,27 +37,41 @@ export default function Home() {
   const { data: apiAlerts, loading: alertsLoading } = useAPI('/anomalies');
   const [hoveredState, setHoveredState] = useState("");
   const [alerts, setAlerts] = useState([]);
+  const [wallets, setWallets] = useState([]);
   useEffect(() => { if (apiAlerts) setAlerts(apiAlerts); }, [apiAlerts]);
+  useEffect(() => { if (stats?.wallet_locations) setWallets(stats.wallet_locations); }, [stats]);
   const [selectedState, setSelectedState] = useState(null);
-  const [scatterDots, setScatterDots] = useState([]);
   const [highlightedWallet, setHighlightedWallet] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [liveThreatData, setLiveThreatData] = useState(null);
+  const mapRef = useRef(null);
   const t = dict.en;
+
+  useEffect(() => {
+    const handleOutsideMapClick = (event) => {
+      if (mapRef.current && !mapRef.current.contains(event.target)) {
+        setSelectedState(null);
+      }
+    };
+    document.addEventListener('click', handleOutsideMapClick);
+    return () => document.removeEventListener('click', handleOutsideMapClick);
+  }, []);
 
   const handleStateClick = (stateName) => {
     if (selectedState === stateName) {
       setSelectedState(null);
-      setScatterDots([]);
     } else {
       setSelectedState(stateName);
-      setScatterDots(generateStateDots(stateName, 15, INDIA_GEO_JSON));
     }
   };
 
   const displayedAlerts = selectedState
     ? alerts.filter(alert => alert.primary_state?.toLowerCase() === selectedState.toLowerCase())
     : alerts;
+  const threatWallets = wallets.length > 0
+    ? wallets.filter(wallet => !selectedState || wallet.primary_state?.toLowerCase() === selectedState.toLowerCase())
+    : displayedAlerts.map(alert => ({ ...alert, is_threat: true }));
+  const threatDots = getWalletDots(threatWallets, INDIA_GEO_JSON);
 
   const triggerLiveIsolation = () => {
     if (liveThreatData || !alerts || alerts.length === 0) return;
@@ -135,12 +149,12 @@ export default function Home() {
           <div className="card map-card">
             <div className="card-header">
               <div className="card-title"><span className="card-title-icon">🗺️</span> Regional Threat Map</div>
-              {selectedState && <button className="clear-btn" onClick={() => { setSelectedState(null); setScatterDots([]); }}>Clear Filter ✖</button>}
+              {selectedState && <button className="clear-btn" onClick={() => setSelectedState(null)}>Clear Filter ✖</button>}
             </div>
-            <div className="hybrid-map" style={{ position: "relative" }}>
+            <div ref={mapRef} className="hybrid-map" style={{ position: "relative" }}>
               {hoveredState && <div className="map-tooltip">{hoveredState}</div>}
               <ComposableMap projection="geoMercator" projectionConfig={{ scale: 1000, center: [80, 22] }} style={{ width: "100%", height: "100%" }}>
-                <ZoomableGroup center={selectedState && STATE_COORDS[selectedState] ? STATE_COORDS[selectedState] : [80, 22]} zoom={selectedState ? 3 : 1} transitionDuration={1200}>
+                <ZoomableGroup center={selectedState ? getStateCenter(selectedState, INDIA_GEO_JSON) : [80, 22]} zoom={selectedState ? 3 : 1} transitionDuration={1200}>
                   <Geographies geography={INDIA_GEO_JSON}>
                     {({ geographies }) => geographies.map((geo, idx) => {
                       const stateName = geo.properties.st_nm || geo.properties.name || geo.properties.NAME_1;
@@ -150,7 +164,13 @@ export default function Home() {
                       );
                     })}
                   </Geographies>
-                  {scatterDots.map(dot => <Marker key={dot.id} coordinates={[dot.lng, dot.lat]}><circle r={2} fill="#2563eb" /></Marker>)}
+                  {threatDots.map(dot => (
+                    <Marker key={dot.id} coordinates={[dot.lng, dot.lat]}>
+                      <circle r={selectedState ? 3 : 2.5} fill={dot.color} stroke="#fff" strokeWidth={0.7}>
+                        <title>{`${dot.wallet} | ${dot.state} | ${dot.confidence}% confidence`}</title>
+                      </circle>
+                    </Marker>
+                  ))}
                 </ZoomableGroup>
               </ComposableMap>
             </div>

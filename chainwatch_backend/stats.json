@@ -1,5 +1,1207 @@
 {
   "total_transactions": 1000,
   "total_wallets": 150,
-  "anomalies_detected": 15
+  "anomalies_detected": 15,
+  "wallet_locations": [
+    {
+      "wallet_address": "00f5e0da3cbd596ba34eb7bf39b2f98e3c",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.179844,
+      "longitude": 75.843667
+    },
+    {
+      "wallet_address": "c497600882a301d749b812fe2daee97589",
+      "primary_state": "Rajasthan",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.796967,
+      "longitude": 76.811622
+    },
+    {
+      "wallet_address": "7af536b71aef2f9cc558cabb3fbb7e8c65",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 17.377168,
+      "longitude": 77.823358
+    },
+    {
+      "wallet_address": "270267a8f02b1950ec57b0ff047b00cb37",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.097238,
+      "longitude": 77.367263
+    },
+    {
+      "wallet_address": "bb503dbbe2b7be1c84c34d8d9db631db0e",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.264786,
+      "longitude": 73.2349
+    },
+    {
+      "wallet_address": "7aefc55c132feba4ecd0f640430f3d8ee4",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": true,
+      "confidence_score": 66.9,
+      "latitude": 22.039741,
+      "longitude": 77.745606
+    },
+    {
+      "wallet_address": "ea6b4bc94f1d30ce1713f8a986d6d94ca3",
+      "primary_state": "West Bengal",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.79098,
+      "longitude": 82.31257
+    },
+    {
+      "wallet_address": "274e56591999cd0c7db1abbae4c900f8c4",
+      "primary_state": "Karnataka",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.566155,
+      "longitude": 77.503255
+    },
+    {
+      "wallet_address": "9ac45036010e1a7cb84f4981e8fec9361f",
+      "primary_state": "Karnataka",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.53519,
+      "longitude": 76.73335
+    },
+    {
+      "wallet_address": "2998a28545baea9a9740681786582e959f",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.235342,
+      "longitude": 76.551708
+    },
+    {
+      "wallet_address": "7778033eb3e5d7c0af472d81dea08fb695",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.428222,
+      "longitude": 78.387033
+    },
+    {
+      "wallet_address": "6fec13c518adf7b8c6e5412eebf80a7243",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.826562,
+      "longitude": 77.367085
+    },
+    {
+      "wallet_address": "ee92695567d485837f02864b2429a52be6",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.42551,
+      "longitude": 77.24948
+    },
+    {
+      "wallet_address": "226ab97c710b56fef7200c57b87ae596bf",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 18.243712,
+      "longitude": 77.06539
+    },
+    {
+      "wallet_address": "36fabe6b4e103948b83b6fa545c6d5996a",
+      "primary_state": "Bihar",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.08068,
+      "longitude": 77.31158
+    },
+    {
+      "wallet_address": "a1462dc24887ffaf28b2728865ff47585f",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.678504,
+      "longitude": 77.27957
+    },
+    {
+      "wallet_address": "4dfdce1eee03ad875354c7918a7cef2327",
+      "primary_state": "Maharashtra",
+      "is_threat": true,
+      "confidence_score": 67.7,
+      "latitude": 21.803344,
+      "longitude": 76.085044
+    },
+    {
+      "wallet_address": "5b37cc180475bd1d4567c52c8a26811946",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 18.42236,
+      "longitude": 76.70574
+    },
+    {
+      "wallet_address": "a7dfbe2738653576d49ca8d66223253cbc",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.351392,
+      "longitude": 77.966592
+    },
+    {
+      "wallet_address": "bfa4c276569c040efea19216a9fd007848",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": true,
+      "confidence_score": 88.9,
+      "latitude": 27.605459,
+      "longitude": 78.138019
+    },
+    {
+      "wallet_address": "a5b5af23e223f671482114a8cf6c04594f",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.46765,
+      "longitude": 75.953786
+    },
+    {
+      "wallet_address": "8e1da06c8f7258eb299aa73ca471110515",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.996655,
+      "longitude": 77.205318
+    },
+    {
+      "wallet_address": "3ed59e43072c6ea07ae782124723afc4b9",
+      "primary_state": "Karnataka",
+      "is_threat": true,
+      "confidence_score": 62.2,
+      "latitude": 20.647473,
+      "longitude": 76.827706
+    },
+    {
+      "wallet_address": "d6b7a574b6fcbafa79ef0fcbf00f98da1f",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.82974,
+      "longitude": 77.76171
+    },
+    {
+      "wallet_address": "b47b844658e274d3ccbc8cdb421d90ac80",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.13808,
+      "longitude": 77.94649
+    },
+    {
+      "wallet_address": "94be70227ec440d281269b054150b8dcd9",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.145188,
+      "longitude": 79.182725
+    },
+    {
+      "wallet_address": "1ac107b1ec39a61eb1959473d679e6e03e",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.881634,
+      "longitude": 77.630064
+    },
+    {
+      "wallet_address": "c83b312466a8e26d93ffde11163195fc80",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.71175,
+      "longitude": 77.292275
+    },
+    {
+      "wallet_address": "e3557018238956739244f4a8dbde005ce5",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": true,
+      "confidence_score": 99.0,
+      "latitude": 27.498826,
+      "longitude": 78.376712
+    },
+    {
+      "wallet_address": "de131728f784aaaa4a492e0bc5ad0aef48",
+      "primary_state": "Karnataka",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.642488,
+      "longitude": 76.072412
+    },
+    {
+      "wallet_address": "5772c12b7853a1b0eda9d293ab72b7ad06",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.745733,
+      "longitude": 77.0731
+    },
+    {
+      "wallet_address": "2a51397028bd22e25d0b6d87be2596dea7",
+      "primary_state": "Haryana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.975611,
+      "longitude": 77.286367
+    },
+    {
+      "wallet_address": "4253630a59421b474ab9531ea75cd380aa",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.997975,
+      "longitude": 75.759762
+    },
+    {
+      "wallet_address": "6a52cfc95c2e09cb8c1660b7d144c49a39",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.331714,
+      "longitude": 73.787557
+    },
+    {
+      "wallet_address": "2822f889c00cabbfe2d55bc18f2f9bebeb",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.841217,
+      "longitude": 75.457617
+    },
+    {
+      "wallet_address": "42ef4d08b036e0a05f3dc94847f83776d6",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.355886,
+      "longitude": 81.183086
+    },
+    {
+      "wallet_address": "51f77e8b4c77bc480dd639f97affc8a88b",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.287408,
+      "longitude": 78.235762
+    },
+    {
+      "wallet_address": "4601ba916e14518c0b980d54f185dfa844",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.473643,
+      "longitude": 75.857543
+    },
+    {
+      "wallet_address": "a2de1df3368c6d82a9dcab4cd62e897941",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.18455,
+      "longitude": 77.034314
+    },
+    {
+      "wallet_address": "ec38fe8860bfb6fd6099a5a810cd04f38b",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.09427,
+      "longitude": 76.2801
+    },
+    {
+      "wallet_address": "c985d3e2a2e07673f0ea9192c5c5722078",
+      "primary_state": "Maharashtra",
+      "is_threat": true,
+      "confidence_score": 60.0,
+      "latitude": 20.672338,
+      "longitude": 77.521447
+    },
+    {
+      "wallet_address": "cb48d39bbea23b81931df5178f388b2124",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 14.61188,
+      "longitude": 77.661729
+    },
+    {
+      "wallet_address": "5f878b2caec66045c68e87a4b97dc09d5a",
+      "primary_state": "Jharkhand",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.340178,
+      "longitude": 81.973278
+    },
+    {
+      "wallet_address": "70cc6e9a16dec03ee06045d99716aea427",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.077629,
+      "longitude": 78.287943
+    },
+    {
+      "wallet_address": "f4c897d4508ca29961abb7d10bd2381211",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": true,
+      "confidence_score": 89.0,
+      "latitude": 27.362451,
+      "longitude": 77.972737
+    },
+    {
+      "wallet_address": "9b9b2d48578c323609eac2e01ba29e8e6b",
+      "primary_state": "Bihar",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.20986,
+      "longitude": 77.38661
+    },
+    {
+      "wallet_address": "be64565ac167926e99ef8c434223e1bbf6",
+      "primary_state": "Maharashtra",
+      "is_threat": true,
+      "confidence_score": 69.6,
+      "latitude": 21.534228,
+      "longitude": 76.870994
+    },
+    {
+      "wallet_address": "6156fe88d3bf550472f4ff4e181b3a3d3c",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.1851,
+      "longitude": 77.371314
+    },
+    {
+      "wallet_address": "f2bcffb5f74418ba31cb938737d55d3d90",
+      "primary_state": "Jharkhand",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.323345,
+      "longitude": 79.119973
+    },
+    {
+      "wallet_address": "3bb5594cfdceb6d721a0b9baf0fd0d45c1",
+      "primary_state": "Rajasthan",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.7234,
+      "longitude": 78.188017
+    },
+    {
+      "wallet_address": "8bf7bcc6f757d9ce5b355937d04bb02590",
+      "primary_state": "Rajasthan",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.366171,
+      "longitude": 77.7976
+    },
+    {
+      "wallet_address": "d9b2258b19ac986deba88123aadcfcad0b",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 16.013271,
+      "longitude": 77.136586
+    },
+    {
+      "wallet_address": "22a1e41f38c5de017b29f8bc4f15a529e4",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.55841,
+      "longitude": 75.63428
+    },
+    {
+      "wallet_address": "b9bdc67401f72d2fa5df2d18a1070085e1",
+      "primary_state": "Karnataka",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.278367,
+      "longitude": 76.93055
+    },
+    {
+      "wallet_address": "53094a17c86918d19d17fb79be66b33578",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.68835,
+      "longitude": 77.428275
+    },
+    {
+      "wallet_address": "412975e27180fdf84d8b7585e2a2b2a943",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.116662,
+      "longitude": 76.596125
+    },
+    {
+      "wallet_address": "fa66627b3a96e8c574563b3d679e7f512e",
+      "primary_state": "Haryana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 25.68681,
+      "longitude": 76.58939
+    },
+    {
+      "wallet_address": "93e7d287377a069468a7bbbdc9f3df57e2",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.687612,
+      "longitude": 75.4387
+    },
+    {
+      "wallet_address": "5e9391d4806389a82d6f492c7c6db9b675",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 17.400438,
+      "longitude": 75.466538
+    },
+    {
+      "wallet_address": "3d5948676716d950338a939a0fd52d47f6",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.651562,
+      "longitude": 76.922892
+    },
+    {
+      "wallet_address": "24223f3cf8ee99594e7d81bb3235b1d43b",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.588829,
+      "longitude": 75.819371
+    },
+    {
+      "wallet_address": "22774a5c49de771f12acf7efa787275431",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.67119,
+      "longitude": 78.4449
+    },
+    {
+      "wallet_address": "8edb591639d14b095ac2accf9f4e2a1d05",
+      "primary_state": "Haryana",
+      "is_threat": true,
+      "confidence_score": 60.6,
+      "latitude": 24.295547,
+      "longitude": 77.873727
+    },
+    {
+      "wallet_address": "45c5cdb5b7bcb654f0c69a8ac79db979f7",
+      "primary_state": "Madhya Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.834256,
+      "longitude": 77.9701
+    },
+    {
+      "wallet_address": "2fa2f6eb94c8dd229fb6f32e7c8f87866c",
+      "primary_state": "Chhattisgarh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 17.5471,
+      "longitude": 78.860389
+    },
+    {
+      "wallet_address": "a2495a369f3c18a7b5fb260eaa66aed8ca",
+      "primary_state": "Odisha",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.60523,
+      "longitude": 78.86219
+    },
+    {
+      "wallet_address": "fc3e75db52e2243f08f8617ca305e4f6c2",
+      "primary_state": "Goa",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 16.931171,
+      "longitude": 76.975529
+    },
+    {
+      "wallet_address": "74ebbd5a28b56282a556c4859b82d2e1e8",
+      "primary_state": "Karnataka",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.677413,
+      "longitude": 76.153
+    },
+    {
+      "wallet_address": "c8baabd5cfd0f64f1170159e5cd0d7d76a",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.00751,
+      "longitude": 76.2289
+    },
+    {
+      "wallet_address": "0902d8ae6b8aadb35edea72d6bebc9e99b",
+      "primary_state": "Rajasthan",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.378567,
+      "longitude": 75.433417
+    },
+    {
+      "wallet_address": "ab751c211393a36e9d4587f589d16d61b2",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.822575,
+      "longitude": 76.069117
+    },
+    {
+      "wallet_address": "e4ba2bc6f4f91da7b5690397cdba26eafc",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.817489,
+      "longitude": 76.217989
+    },
+    {
+      "wallet_address": "f94514b4257e78d5b5d1615562510c29c5",
+      "primary_state": "Maharashtra",
+      "is_threat": true,
+      "confidence_score": 69.0,
+      "latitude": 20.945628,
+      "longitude": 77.583689
+    },
+    {
+      "wallet_address": "5d745fbfbbc8b545e8b35b4751dc915bfd",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 25.141556,
+      "longitude": 75.7254
+    },
+    {
+      "wallet_address": "48a2eb961dd7fae47cc817f38b98d6fb7f",
+      "primary_state": "Rajasthan",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.238911,
+      "longitude": 77.053122
+    },
+    {
+      "wallet_address": "150bb1f8b698373282d3e12f4b00995246",
+      "primary_state": "Odisha",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.920707,
+      "longitude": 77.569408
+    },
+    {
+      "wallet_address": "9064e6d6971f43ca3b8cc1c6f164298056",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.3147,
+      "longitude": 78.072662
+    },
+    {
+      "wallet_address": "c3c82d64e948085cd1b8766ebeb0f6e239",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.18372,
+      "longitude": 79.118907
+    },
+    {
+      "wallet_address": "92ca7a3c4e7c403d62584bd10c5cc657c9",
+      "primary_state": "Bihar",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.226473,
+      "longitude": 78.627682
+    },
+    {
+      "wallet_address": "65bd4455131b701edb4f19a496cc86285c",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.993989,
+      "longitude": 77.331911
+    },
+    {
+      "wallet_address": "381ba454a579a0bc799d9a23029590463a",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.5079,
+      "longitude": 74.305783
+    },
+    {
+      "wallet_address": "68b73418c2f91b5c919090e2076cb5a5df",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.057144,
+      "longitude": 78.035356
+    },
+    {
+      "wallet_address": "698e0db638ab524c8a706b5c2daf50d209",
+      "primary_state": "Andhra Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 15.94584,
+      "longitude": 78.78876
+    },
+    {
+      "wallet_address": "abb44a1e0248ef301657b8700d273efce4",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.598517,
+      "longitude": 76.72605
+    },
+    {
+      "wallet_address": "de7bfba46d8d34d4fff483e33d46ada0ea",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.98885,
+      "longitude": 78.125067
+    },
+    {
+      "wallet_address": "65b990285ec98bf52561d7f67266e37967",
+      "primary_state": "Bihar",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.561471,
+      "longitude": 78.487914
+    },
+    {
+      "wallet_address": "52b8bfd8eea7695cf76c6defc2b5997622",
+      "primary_state": "Punjab",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 25.277867,
+      "longitude": 77.365017
+    },
+    {
+      "wallet_address": "c657cbdcd6d52c7899bd4e9b559961ad38",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.874025,
+      "longitude": 78.618433
+    },
+    {
+      "wallet_address": "d9ff1277d764f628f581dbf8fffb28c66d",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.487214,
+      "longitude": 76.729286
+    },
+    {
+      "wallet_address": "8371aa07ce2a5068298c37cedc5fc96a26",
+      "primary_state": "Punjab",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.373193,
+      "longitude": 77.318436
+    },
+    {
+      "wallet_address": "0d9538af7aaa2cd0f96bc88f9937421dc1",
+      "primary_state": "Uttarakhand",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.878967,
+      "longitude": 78.541667
+    },
+    {
+      "wallet_address": "c0a0a1fc99c50a3355bbfd412ee26c15a7",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.811818,
+      "longitude": 76.4956
+    },
+    {
+      "wallet_address": "4c8c93813c0e98f5e79c9a8f1c8eb41ac5",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.906909,
+      "longitude": 75.893582
+    },
+    {
+      "wallet_address": "5453f6894e8448a40d27e6dd0effa824a6",
+      "primary_state": "Odisha",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.37387,
+      "longitude": 79.85079
+    },
+    {
+      "wallet_address": "e91f2adbb8f4b819106fc584facd75a1cf",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.042435,
+      "longitude": 77.455538
+    },
+    {
+      "wallet_address": "61355c7092a48e80a5a395825fc0b2436b",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.586344,
+      "longitude": 75.996211
+    },
+    {
+      "wallet_address": "b251c268243d960231a572e912905fc567",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.176458,
+      "longitude": 75.791583
+    },
+    {
+      "wallet_address": "92da22800206a807437693901601bc2aa4",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.325599,
+      "longitude": 75.62448
+    },
+    {
+      "wallet_address": "ae530b3fb4695cc5f8f46b1778a3dc3086",
+      "primary_state": "Karnataka",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 17.65258,
+      "longitude": 77.24634
+    },
+    {
+      "wallet_address": "df33be4ef38d33934cdbf6ed122642b470",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 18.098744,
+      "longitude": 76.201967
+    },
+    {
+      "wallet_address": "f465089604a3bb1c25912920fbc8f90c19",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.473411,
+      "longitude": 77.726711
+    },
+    {
+      "wallet_address": "426111810eb0ee9eb126ec8cb5d2101b6d",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.644671,
+      "longitude": 78.541779
+    },
+    {
+      "wallet_address": "e832c863d525f72f8ae80b0bf55542f9bd",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.429443,
+      "longitude": 78.892757
+    },
+    {
+      "wallet_address": "a5b94122ca5bc31be0cd3dc5e7880b3c3b",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.819725,
+      "longitude": 77.99005
+    },
+    {
+      "wallet_address": "f78a04c8f8e1e75f7ecf9090d68db99f8f",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.25611,
+      "longitude": 77.44321
+    },
+    {
+      "wallet_address": "6238ac5e876ec990437cf408ab61b680a6",
+      "primary_state": "Bihar",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.95562,
+      "longitude": 77.6803
+    },
+    {
+      "wallet_address": "c20c251936c5df146c47c960a9a397fac6",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.534356,
+      "longitude": 77.279489
+    },
+    {
+      "wallet_address": "45d3d3f99b6a3ba52d26df044ab59fdf88",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.593233,
+      "longitude": 76.8908
+    },
+    {
+      "wallet_address": "41f1c201970365db5dd5e34ec09db365f8",
+      "primary_state": "Karnataka",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.5188,
+      "longitude": 76.878614
+    },
+    {
+      "wallet_address": "d184f6eca758b4f0f98ba774fe5c4eca87",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.9742,
+      "longitude": 77.603483
+    },
+    {
+      "wallet_address": "12879899bf57fa21c14867299315b9b1d5",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.391443,
+      "longitude": 76.440614
+    },
+    {
+      "wallet_address": "d76b53d628a9839b70a1af00592607bafa",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.241329,
+      "longitude": 76.817771
+    },
+    {
+      "wallet_address": "f34cad59e5ef51c5fae4ef0e3109d843ca",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.907815,
+      "longitude": 76.619346
+    },
+    {
+      "wallet_address": "ffa071cac95124ef9988436cc721cf73fe",
+      "primary_state": "Haryana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.129222,
+      "longitude": 78.529744
+    },
+    {
+      "wallet_address": "d36b6721ab885614fa48646894b1335269",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.03637,
+      "longitude": 77.49689
+    },
+    {
+      "wallet_address": "daa3ea2b26fba97d4f3a85d25ecc1f101c",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.410638,
+      "longitude": 77.561962
+    },
+    {
+      "wallet_address": "ef5b27183d544e684a48d0476978e96521",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.026844,
+      "longitude": 77.28165
+    },
+    {
+      "wallet_address": "aba9997c33cb2f8f94ad4ab9e5173f4f8d",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.603811,
+      "longitude": 75.598733
+    },
+    {
+      "wallet_address": "02dcd624463fd37d7f574565ec8d575585",
+      "primary_state": "Delhi",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.325367,
+      "longitude": 75.348367
+    },
+    {
+      "wallet_address": "48d4fc7df69fdf83ab8cf6d30832243568",
+      "primary_state": "Madhya Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.301578,
+      "longitude": 77.744733
+    },
+    {
+      "wallet_address": "1823085dccfec5815a9835dee700b3bb0f",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.295486,
+      "longitude": 76.295871
+    },
+    {
+      "wallet_address": "4df07a909ee0913cae85c487b846259a7a",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 18.575475,
+      "longitude": 75.874462
+    },
+    {
+      "wallet_address": "9303a11bd269b4f5a85507effd78c0c612",
+      "primary_state": "Punjab",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 22.266088,
+      "longitude": 76.344145
+    },
+    {
+      "wallet_address": "39cf767b29b13ecadd2652c4383e20bc06",
+      "primary_state": "Uttarakhand",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.134511,
+      "longitude": 79.083422
+    },
+    {
+      "wallet_address": "071bf2eaeeef0455c91aad8f32d353b0fe",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 16.08645,
+      "longitude": 78.54285
+    },
+    {
+      "wallet_address": "bf197807a7810ad6223d488ddf49967fc8",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.888643,
+      "longitude": 75.769186
+    },
+    {
+      "wallet_address": "2b6399356c1d8fc140627e62bdab220bca",
+      "primary_state": "Rajasthan",
+      "is_threat": true,
+      "confidence_score": 72.6,
+      "latitude": 25.451625,
+      "longitude": 75.9702
+    },
+    {
+      "wallet_address": "1c8163832649e072341ba8502fd2a14ea1",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.15451,
+      "longitude": 78.48001
+    },
+    {
+      "wallet_address": "47891a2be60f337ccfca23d3bd02fb254c",
+      "primary_state": "Andhra Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.434886,
+      "longitude": 76.711114
+    },
+    {
+      "wallet_address": "3a67930207fda90ee8f39b6e41a61f1d88",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 18.449685,
+      "longitude": 77.599227
+    },
+    {
+      "wallet_address": "0486d91283244ab252d4bc19bae8624fe3",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.069845,
+      "longitude": 77.157573
+    },
+    {
+      "wallet_address": "1411ba4e206a9e8ae7363bd3ba23ff8816",
+      "primary_state": "Telangana",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.181243,
+      "longitude": 78.374843
+    },
+    {
+      "wallet_address": "e00d2c93ece78a09a0b10ffeaf6a3072ab",
+      "primary_state": "Uttarakhand",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 25.588836,
+      "longitude": 77.465064
+    },
+    {
+      "wallet_address": "d0c291439e3f1b360b0cdfd56f77c5792b",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.65355,
+      "longitude": 76.046417
+    },
+    {
+      "wallet_address": "2f9d39853f9d61f1735f1bf56ab0b6f5bd",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.601391,
+      "longitude": 79.35795
+    },
+    {
+      "wallet_address": "dbc63c1d0c0d9183616952988d49c67662",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 24.56713,
+      "longitude": 79.62561
+    },
+    {
+      "wallet_address": "edff0a5c5ebc3766d00e6b1c16c85718fa",
+      "primary_state": "Odisha",
+      "is_threat": true,
+      "confidence_score": 60.9,
+      "latitude": 23.98655,
+      "longitude": 81.029675
+    },
+    {
+      "wallet_address": "bd8df5b598c96dbfbb211d00a3ab6081cf",
+      "primary_state": "West Bengal",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 23.6399,
+      "longitude": 80.786171
+    },
+    {
+      "wallet_address": "a9094e1fe103d2c1262c2f6d73429b5c1d",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.41446,
+      "longitude": 78.04587
+    },
+    {
+      "wallet_address": "3d311430a4cf0fe12a31609acaf6545bc0",
+      "primary_state": "Tamil Nadu",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.835291,
+      "longitude": 77.085155
+    },
+    {
+      "wallet_address": "0abfc076d9b9eb4eb20b861eb1ca82e063",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.945444,
+      "longitude": 76.150422
+    },
+    {
+      "wallet_address": "5f6f157489ec01f87a88bcea4d4648a355",
+      "primary_state": "Maharashtra",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.593335,
+      "longitude": 77.528
+    },
+    {
+      "wallet_address": "96dce021f0eebf33078458b95b35c96c13",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 25.410575,
+      "longitude": 79.161525
+    },
+    {
+      "wallet_address": "29e6772b9eacc24573740be9dc8cabc2be",
+      "primary_state": "West Bengal",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 19.61963,
+      "longitude": 81.348967
+    },
+    {
+      "wallet_address": "0bed12622026802325ad731334a65b8fe9",
+      "primary_state": "Uttar Pradesh",
+      "is_threat": true,
+      "confidence_score": 63.8,
+      "latitude": 22.65002,
+      "longitude": 77.04702
+    },
+    {
+      "wallet_address": "37fd6b5b2a679360ed986efaf453b19601",
+      "primary_state": "West Bengal",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.164756,
+      "longitude": 83.756922
+    },
+    {
+      "wallet_address": "a4d05d6f3e869996a240c6d5184a1996fd",
+      "primary_state": "Maharashtra",
+      "is_threat": true,
+      "confidence_score": 63.5,
+      "latitude": 23.79015,
+      "longitude": 77.589675
+    },
+    {
+      "wallet_address": "afd6c12c0bc842039a5f791487ba13f153",
+      "primary_state": "Gujarat",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 20.93185,
+      "longitude": 76.847988
+    },
+    {
+      "wallet_address": "5a7607de2b031166567763b52dc5c25f72",
+      "primary_state": "Kerala",
+      "is_threat": false,
+      "confidence_score": 0,
+      "latitude": 21.087078,
+      "longitude": 77.320211
+    },
+    {
+      "wallet_address": "5c100a5804791270ac6500cf647a7b3c12",
+      "primary_state": "Punjab",
+      "is_threat": true,
+      "confidence_score": 62.0,
+      "latitude": 25.82855,
+      "longitude": 75.550925
+    }
+  ]
 }

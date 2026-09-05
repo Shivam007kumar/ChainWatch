@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 import INDIA_GEO_JSON from './india.json';
-import { STATE_COORDS, generateStateDots } from './mapUtils';
+import { getStateCenter, getWalletDots } from './mapUtils';
 import './index.css';
 
 const API = 'http://localhost:8000/api/v1';
@@ -15,12 +15,22 @@ export default function Workspace() {
   const [alerts, setAlerts] = useState([]);
   const [selectedState, setSelectedState] = useState(null);
   const [hoveredState, setHoveredState] = useState("");
-  const [scatterDots, setScatterDots] = useState([]);
+  const mapRef = useRef(null);
   const terminalEndRef = useRef(null);
 
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
+
+  useEffect(() => {
+    const handleOutsideMapClick = (event) => {
+      if (mapRef.current && !mapRef.current.contains(event.target)) {
+        setSelectedState(null);
+      }
+    };
+    document.addEventListener('click', handleOutsideMapClick);
+    return () => document.removeEventListener('click', handleOutsideMapClick);
+  }, []);
 
   const handleFileChange = (event) => {
     if (event.target.files && event.target.files[0]) setFile(event.target.files[0]);
@@ -29,10 +39,8 @@ export default function Workspace() {
   const handleStateClick = (stateName) => {
     if (selectedState === stateName) {
       setSelectedState(null);
-      setScatterDots([]);
     } else {
       setSelectedState(stateName);
-      setScatterDots(generateStateDots(stateName, 20, INDIA_GEO_JSON));
     }
   };
 
@@ -72,7 +80,7 @@ export default function Workspace() {
   const stateSuspects = selectedState
     ? alerts.filter(alert => alert.primary_state?.toLowerCase() === selectedState.toLowerCase())
     : alerts;
-
+  const threatDots = getWalletDots(stateSuspects.map(alert => ({ ...alert, is_threat: true })), INDIA_GEO_JSON);
   const topStates = Object.entries(alerts.reduce((counts, alert) => {
     const stateName = alert.primary_state || 'Unknown';
     counts[stateName] = (counts[stateName] || 0) + 1;
@@ -110,7 +118,7 @@ export default function Workspace() {
         </div>
 
         <div className="ws-pane ws-center">
-          <div className="ws-map-container" style={{ position: "relative" }}>
+          <div ref={mapRef} className="ws-map-container" style={{ position: "relative" }}>
             <h3 className="ws-pane-title" style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>2. GEOSPATIAL ISOLATION</h3>
             {selectedState && <div className="state-badge">TARGET: {selectedState.toUpperCase()}</div>}
             {hoveredState && <div className="map-tooltip">{hoveredState}</div>}
@@ -123,7 +131,7 @@ export default function Workspace() {
               </div>
             )}
             <ComposableMap projection="geoMercator" projectionConfig={{ scale: 1000, center: [80, 22] }} style={{ width: "100%", height: "100%" }}>
-              <ZoomableGroup center={selectedState && STATE_COORDS[selectedState] ? STATE_COORDS[selectedState] : [80, 22]} zoom={selectedState ? 3 : 1} transitionDuration={800}>
+              <ZoomableGroup center={selectedState ? getStateCenter(selectedState, INDIA_GEO_JSON) : [80, 22]} zoom={selectedState ? 3 : 1} transitionDuration={800}>
                 <Geographies geography={INDIA_GEO_JSON}>
                   {({ geographies }) => geographies.map((geo) => {
                     const stateName = geo.properties.st_nm || geo.properties.name || geo.properties.NAME_1;
@@ -133,7 +141,13 @@ export default function Workspace() {
                     );
                   })}
                 </Geographies>
-                {scatterDots.map(dot => <Marker key={dot.id} coordinates={[dot.lng, dot.lat]}><circle r={2} fill="#2563eb" /></Marker>)}
+                {threatDots.map(dot => (
+                  <Marker key={dot.id} coordinates={[dot.lng, dot.lat]}>
+                    <circle r={selectedState ? 3 : 2.5} fill={dot.color} stroke="#fff" strokeWidth={0.7}>
+                      <title>{`${dot.wallet} | ${dot.state} | ${dot.confidence}% confidence`}</title>
+                    </circle>
+                  </Marker>
+                ))}
               </ZoomableGroup>
             </ComposableMap>
           </div>
@@ -149,7 +163,7 @@ export default function Workspace() {
         <div className="ws-pane ws-right">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 className="ws-pane-title" style={{ margin: 0 }}>3. REGIONAL SUSPECTS</h3>
-            {selectedState && <button className="clear-btn" onClick={() => { setSelectedState(null); setScatterDots([]); }}>Clear Filter</button>}
+            {selectedState && <button className="clear-btn" onClick={() => setSelectedState(null)}>Clear Filter</button>}
           </div>
           <div className="ws-suspect-list">
             {stateSuspects.length === 0 ? (

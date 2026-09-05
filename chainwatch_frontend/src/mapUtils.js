@@ -41,6 +41,77 @@ function pointInGeometry(point, geometry) {
   return false;
 }
 
+export function getStateCenter(stateName, geoJson) {
+  const features = geoJson.features.filter(feature => {
+    const name = feature.properties.st_nm || feature.properties.name || feature.properties.NAME_1;
+    return name?.toLowerCase() === stateName?.toLowerCase();
+  });
+  const coordinateList = features.flatMap(feature => coordinatePairs(feature.geometry.coordinates));
+  if (!coordinateList.length) return STATE_COORDS[stateName] || [80, 22];
+
+  const longitudes = coordinateList.map(([longitude]) => longitude);
+  const latitudes = coordinateList.map(([, latitude]) => latitude);
+  return [
+    (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
+    (Math.min(...latitudes) + Math.max(...latitudes)) / 2
+  ];
+}
+
+export function getWalletDots(wallets, geoJson) {
+  let randomState = 1;
+  const nextRandom = () => {
+    randomState = (randomState * 1664525 + 1013904223) % 4294967296;
+    return randomState / 4294967296;
+  };
+
+  const groupedWallets = wallets.reduce((groups, wallet) => {
+    const stateName = wallet.primary_state || 'Unknown';
+    groups[stateName] = groups[stateName] || [];
+    groups[stateName].push(wallet);
+    return groups;
+  }, {});
+
+  return Object.entries(groupedWallets).flatMap(([stateName, stateWallets]) => {
+    const features = geoJson.features.filter(feature => {
+      const name = feature.properties.st_nm || feature.properties.name || feature.properties.NAME_1;
+      return name?.toLowerCase() === stateName.toLowerCase();
+    });
+    const coordinateList = features.flatMap(feature => coordinatePairs(feature.geometry.coordinates));
+    if (!coordinateList.length) return [];
+
+    const longitudes = coordinateList.map(([longitude]) => longitude);
+    const latitudes = coordinateList.map(([, latitude]) => latitude);
+    const bounds = {
+      minLongitude: Math.min(...longitudes), maxLongitude: Math.max(...longitudes),
+      minLatitude: Math.min(...latitudes), maxLatitude: Math.max(...latitudes)
+    };
+
+    return stateWallets.map((wallet, index) => {
+      let point;
+      let attempts = 0;
+      do {
+        point = [
+          bounds.minLongitude + nextRandom() * (bounds.maxLongitude - bounds.minLongitude),
+          bounds.minLatitude + nextRandom() * (bounds.maxLatitude - bounds.minLatitude)
+        ];
+        attempts += 1;
+      } while (attempts < 10000 && !features.some(feature => pointInGeometry(point, feature.geometry)));
+
+      if (!features.some(feature => pointInGeometry(point, feature.geometry))) return null;
+      const confidence = Number(wallet.confidence_score) || 0;
+      return {
+        id: wallet.wallet_address,
+        lng: point[0],
+        lat: point[1],
+        wallet: wallet.wallet_address,
+        state: stateName,
+        confidence,
+        color: wallet.is_threat ? (confidence >= 85 ? '#e86a6a' : '#e9a24f') : '#4f8fc9'
+      };
+    });
+  }).filter(Boolean);
+}
+
 export function generateStateDots(stateName, count, geoJson) {
   const features = geoJson.features.filter(feature => {
     const name = feature.properties.st_nm || feature.properties.name || feature.properties.NAME_1;
@@ -71,4 +142,12 @@ export function generateStateDots(stateName, count, geoJson) {
     }
   }
   return dots;
+}
+
+export function generateAllStateDots(geoJson, countPerState = 3) {
+  const stateNames = [...new Set(geoJson.features.map(feature => (
+    feature.properties.st_nm || feature.properties.name || feature.properties.NAME_1
+  )).filter(Boolean))];
+
+  return stateNames.flatMap(stateName => generateStateDots(stateName, countPerState, geoJson));
 }

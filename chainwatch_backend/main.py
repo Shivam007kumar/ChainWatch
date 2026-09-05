@@ -1,6 +1,8 @@
 import json
 import ast
 import io
+from bisect import bisect_right
+from functools import lru_cache
 from pathlib import Path
 from collections import defaultdict, Counter
 from typing import List, Optional
@@ -25,6 +27,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 BASE_DIR = Path(__file__).resolve().parent
 CITY_DB = BASE_DIR / "database" / "GeoIP-City.mmdb"
 ASN_DB = BASE_DIR / "database" / "GeoIP-ASN.mmdb"
+LOCATION_CSV = BASE_DIR.parent / "IP_Address.csv"
+ASN_CSV = BASE_DIR.parent / "dbip-asn-lite-2026-09.csv"
 
 # --- TEAMMATE's OFFLINE IP LOGIC ---
 try:
@@ -35,18 +39,117 @@ except Exception as e:
     print(f"⚠️ Warning: MaxMind DBs not found in {BASE_DIR}/database/. Using fallback logic.")
     city_reader, asn_reader = None, None
 
+
+@lru_cache(maxsize=1)
+def load_location_ranges():
+    if not LOCATION_CSV.exists():
+        return []
+
+    reference = pd.read_csv(LOCATION_CSV, encoding="utf-8-sig")
+    reference.columns = [column.strip().lstrip("\ufeff").lower() for column in reference.columns]
+    ranges = []
+    for row in reference.to_dict("records"):
+        try:
+            start = int(ipaddress.ip_address(str(row["start"]).strip()))
+            end = int(ipaddress.ip_address(str(row["end"]).strip()))
+            if start <= end:
+                ranges.append((
+                    start,
+                    end,
+                    str(row.get("state", "Unknown")).strip(),
+                    str(row.get("city", "Unknown")).strip(),
+                    float(row["lat"]),
+                    float(row["long"]),
+                ))
+        except (KeyError, TypeError, ValueError):
+            continue
+    ranges = sorted(ranges, key=lambda item: item[0])
+    return [item[0] for item in ranges], ranges
+
+
+@lru_cache(maxsize=1)
+def load_asn_ranges():
+    if not ASN_CSV.exists():
+        return []
+
+    reference = pd.read_csv(
+        ASN_CSV,
+        header=None,
+        names=["start", "end", "asn", "org"],
+        encoding="utf-8",
+        on_bad_lines="skip",
+    )
+    ranges = []
+    for row in reference.to_dict("records"):
+        try:
+            start = int(ipaddress.ip_address(str(row["start"]).strip()))
+            end = int(ipaddress.ip_address(str(row["end"]).strip()))
+            if start <= end:
+                ranges.append((start, end, str(row["asn"]).strip(), str(row["org"]).strip()))
+        except (TypeError, ValueError):
+            continue
+    ranges = sorted(ranges, key=lambda item: item[0])
+    return [item[0] for item in ranges], ranges
+
+
+def find_range(value, indexed_ranges):
+    if not indexed_ranges:
+        return None
+    starts, ranges = indexed_ranges
+    if not ranges:
+        return None
+    index = bisect_right(starts, value) - 1
+    if index >= 0 and value <= ranges[index][1]:
+        return ranges[index]
+    return None
+
 def lookup_ip(ip):
-    result = {"state": "Unknown", "asn": "N/A", "org": "N/A"}
+    result = {
+        "state": "Unknown", "city": "Unknown", "asn": "N/A", "org": "N/A",
+        "latitude": None, "longitude": None
+    }
     try:
+        address = ipaddress.ip_address(ip)
+        if not address.is_global:
+            return result
+
         if city_reader:
             data = city_reader.get(ip)
-            if data and "subdivisions" in data:
-                result["state"] = data["subdivisions"][0].get("names", {}).get("en", "Unknown")
+            if data:
+                subdivisions = data.get("subdivisions", [])
+                location = data.get("location", {})
+                city = data.get("city", {}).get("names", {}).get("en")
+                if subdivisions:
+                    result["state"] = subdivisions[0].get("names", {}).get("en", "Unknown")
+                if city:
+                    result["city"] = city
+                result["latitude"] = location.get("latitude")
+                result["longitude"] = location.get("longitude")
         if asn_reader:
             data = asn_reader.get(ip)
             if data:
                 result["asn"] = f"AS{data.get('autonomous_system_number', '')}"
                 result["org"] = data.get("autonomous_system_organization", "N/A")
+
+        location_match = find_range(int(address), load_location_ranges())
+        if location_match:
+            _, _, state, city, latitude, longitude = location_match
+            if result["state"] == "Unknown":
+                result["state"] = state
+            if result["city"] == "Unknown":
+                result["city"] = city
+            if result["latitude"] is None:
+                result["latitude"] = latitude
+            if result["longitude"] is None:
+                result["longitude"] = longitude
+
+        asn_match = find_range(int(address), load_asn_ranges())
+        if asn_match:
+            _, _, asn, org = asn_match
+            if result["asn"] == "N/A":
+                result["asn"] = f"AS{asn}"
+            if result["org"] == "N/A":
+                result["org"] = org
     except Exception:
         pass
     return result
@@ -99,7 +202,7 @@ async def ingest_ledger(file: UploadFile = File(...)):
     
     # 1. Feature Engineering
     wallet_stats = defaultdict(lambda: {
-        "tx_count": 0, "volume": 0.0, "ips": set(), "states": list(), "asns": list(), "orgs": list()
+        "tx_count": 0, "volume": 0.0, "ips": set(), "states": list(), "asns": list(), "orgs": list(), "locations": list()
     })
     
     for _, row in df.iterrows():
@@ -122,6 +225,8 @@ async def ingest_ledger(file: UploadFile = File(...)):
             ws["states"].append(state)
             ws["asns"].append(asn)
             ws["orgs"].append(org)
+            if ip_info["latitude"] is not None and ip_info["longitude"] is not None:
+                ws["locations"].append((ip_info["latitude"], ip_info["longitude"]))
             
     wallets = list(wallet_stats.keys())
     features = np.array([[s["tx_count"], s["volume"], len(s["ips"])] for s in wallet_stats.values()])
@@ -167,10 +272,27 @@ async def ingest_ledger(file: UploadFile = File(...)):
             "unique_ip_count": len(s["ips"]),
             "primary_state": primary_state,
             "asn": primary_asn,
-            "isp": primary_org
+            "isp": primary_org,
+            "lat": round(np.mean([location[0] for location in s["locations"]]), 6) if s["locations"] else None,
+            "lng": round(np.mean([location[1] for location in s["locations"]]), 6) if s["locations"] else None
         })
         
     anomaly_results.sort(key=lambda x: x["confidence_score"], reverse=True)
+    flagged_wallets = {alert["wallet_address"] for alert in anomaly_results}
+    confidence_by_wallet = {
+        alert["wallet_address"]: alert["confidence_score"] for alert in anomaly_results
+    }
+    wallet_locations = [
+        {
+            "wallet_address": wallet,
+            "primary_state": Counter(stats["states"]).most_common(1)[0][0],
+            "is_threat": wallet in flagged_wallets,
+            "confidence_score": confidence_by_wallet.get(wallet, 0),
+            "latitude": round(np.mean([location[0] for location in stats["locations"]]), 6) if stats["locations"] else None,
+            "longitude": round(np.mean([location[1] for location in stats["locations"]]), 6) if stats["locations"] else None
+        }
+        for wallet, stats in wallet_stats.items()
+    ]
     
     # Save Outputs
     with open(BASE_DIR / "anomaly_results.json", "w") as f:
@@ -180,7 +302,8 @@ async def ingest_ledger(file: UploadFile = File(...)):
         json.dump({
             "total_transactions": len(df),
             "total_wallets": len(wallets),
-            "anomalies_detected": len(anomaly_results)
+            "anomalies_detected": len(anomaly_results),
+            "wallet_locations": wallet_locations
         }, f, indent=2)
         
     return {"message": "Ingestion and ML Analysis Complete", "anomalies_found": len(anomaly_results)}

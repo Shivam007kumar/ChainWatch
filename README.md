@@ -116,10 +116,11 @@ The system ingests raw Bitcoin ledger data (CSV format), runs a two-stage machin
 - **Feature engineering per wallet:** transaction count, total BTC volume, unique IP count
 - **Confidence scoring:** mapped from Isolation Forest decision function to a human-readable 60–99% range
 - **Six behavioral threat classes** (see [Threat Classification Model](#threat-classification-model))
-- **Offline GeoIP & ASN resolution** via MaxMind `.mmdb` databases — no external API calls
+- **Offline GeoIP & ASN resolution** via MaxMind `.mmdb` databases with CSV fallback — no external API calls
 
 ### Data Generator
 - **Streamlit app** for generating augmented synthetic Bitcoin ledger data
+- **Reference-backed IP generation** using the supplied Indian IP range CSV
 - **Power-law distribution** to mimic real financial behavior (80% normal retail, ~5% planted anomalies)
 - **36 Indian states and UTs** supported as target jurisdictions
 - **One-click CSV download** for immediate ingestion
@@ -451,10 +452,10 @@ The Streamlit app (`generator_app.py`) provides an interactive UI for generating
 
 ### How it Works
 
-1. **State selection** — Pick a target state index (1–36) to plant a high-confidence threat anomaly in that jurisdiction
+1. **State selection** — Pick a target state from the dropdown to plant a high-confidence threat anomaly in that jurisdiction
 2. **Data generation** — Creates 1,000 transactions with the following distribution:
    - **~95% normal traffic** — Pareto-distributed retail transactions, random Indian states, low BTC volumes (0.01–1.5× multiplier)
-   - **~5% planted anomalies** — Concentrated in the target state, using 3 specific "threat wallets", high BTC volumes (10–50× multiplier)
+  - **~5% planted anomalies** — Concentrated in the target state, using 3 specific "threat wallets", high BTC volumes (10–50× multiplier), and reference-backed IPs
 3. **Download** — Export as `ledger.csv` for upload into the ChainWatch Workspace
 
 ### Running the Generator
@@ -506,7 +507,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 The API will be live at `http://localhost:8000`.  
 Interactive docs: `http://localhost:8000/docs`
 
-> **Note:** If `GeoIP-City.mmdb` and `GeoIP-ASN.mmdb` are not present in `chainwatch_backend/database/`, the engine will fall back to the `geo_state` column in the CSV for state attribution, and ASN/ISP fields will show `N/A`.
+> **Note:** If the MaxMind files are unavailable, the engine uses the root-level reference CSVs when present, then falls back to the ledger's `geo_state` column. Missing reference matches remain `Unknown` or `N/A`.
+
+When the root-level `IP_Address.csv` and `dbip-asn-lite-2026-09.csv` files are present, they provide offline fallback enrichment before the ledger's `geo_state` value. The location CSV supplies state and coordinates; the ASN CSV supplies ASN and organization. MaxMind data remains preferred when the `.mmdb` files are available.
 
 ### Frontend Setup
 
