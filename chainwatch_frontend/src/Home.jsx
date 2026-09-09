@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 import MetricCards from './components/MetricCards';
 import AlertTable from './components/AlertTable';
+import GraphView from './components/GraphView';
 import INDIA_GEO_JSON from './india.json';
 import { getStateCenter, getWalletDots } from './mapUtils';
 import './index.css';
@@ -35,6 +36,7 @@ export default function Home() {
   const navigate = useNavigate();
   const { data: stats, loading: statsLoading } = useAPI('/stats');
   const { data: apiAlerts, loading: alertsLoading } = useAPI('/anomalies');
+  const { data: graphData, loading: graphLoading } = useAPI('/graph');
   const [hoveredState, setHoveredState] = useState("");
   const [alerts, setAlerts] = useState([]);
   const [wallets, setWallets] = useState([]);
@@ -42,6 +44,8 @@ export default function Home() {
   useEffect(() => { if (stats?.wallet_locations) setWallets(stats.wallet_locations); }, [stats]);
   const [selectedState, setSelectedState] = useState(null);
   const [highlightedWallet, setHighlightedWallet] = useState(null);
+  const [selectedGraphNode, setSelectedGraphNode] = useState(null);
+  const [mapMode, setMapMode] = useState('regional');
   const [zoom, setZoom] = useState(1);
   const [liveThreatData, setLiveThreatData] = useState(null);
   const mapRef = useRef(null);
@@ -50,6 +54,7 @@ export default function Home() {
   useEffect(() => {
     const handleOutsideMapClick = (event) => {
       if (mapRef.current && !mapRef.current.contains(event.target)) {
+        if (event.target.closest('.alert-panel')) return;
         setSelectedState(null);
       }
     };
@@ -71,7 +76,30 @@ export default function Home() {
   const threatWallets = wallets.length > 0
     ? wallets.filter(wallet => !selectedState || wallet.primary_state?.toLowerCase() === selectedState.toLowerCase())
     : displayedAlerts.map(alert => ({ ...alert, is_threat: true }));
-  const threatDots = getWalletDots(threatWallets, INDIA_GEO_JSON);
+  const threatDots = getWalletDots(threatWallets, INDIA_GEO_JSON, highlightedWallet);
+
+  const handleAlertSelect = (walletAddress) => {
+    const alert = alerts.find(item => item.wallet_address === walletAddress);
+    setHighlightedWallet(walletAddress);
+    setSelectedGraphNode(`wallet:${walletAddress}`);
+    if (alert?.primary_state) setSelectedState(alert.primary_state);
+  };
+
+  const handleGraphNodeSelect = (node) => {
+    setSelectedGraphNode(node.id);
+    if (node.type === 'wallet') {
+      const wallet = node.address || node.id.replace(/^wallet:/, '');
+      setHighlightedWallet(wallet);
+      const alert = alerts.find(item => item.wallet_address === wallet);
+      if (alert?.primary_state) setSelectedState(alert.primary_state);
+    }
+  };
+
+  const resetNeuralMap = () => {
+    setSelectedGraphNode(null);
+    setHighlightedWallet(null);
+    setSelectedState(null);
+  };
 
   const triggerLiveIsolation = () => {
     if (liveThreatData || !alerts || alerts.length === 0) return;
@@ -148,10 +176,23 @@ export default function Home() {
         <div id="threat-intel-section" className="dashboard-grid two-column">
           <div className="card map-card">
             <div className="card-header">
-              <div className="card-title"><span className="card-title-icon">🗺️</span> Regional Threat Map</div>
-              {selectedState && <button className="clear-btn" onClick={() => setSelectedState(null)}>Clear Filter ✖</button>}
+              <div className="card-title"><span className="card-title-icon">{mapMode === 'regional' ? '🗺️' : '✦'}</span> {mapMode === 'regional' ? 'Regional Threat Map' : 'Neural Entity Map'}</div>
+              <div className="map-card-actions">
+                <div className="map-mode-toggle" role="group" aria-label="Map view">
+                  <button className={mapMode === 'regional' ? 'active' : ''} onClick={() => setMapMode('regional')}>Regional Map</button>
+                  <button className={mapMode === 'neural' ? 'active' : ''} onClick={() => setMapMode('neural')}>Neural Map</button>
+                </div>
+                {mapMode === 'neural' && <button className="clear-btn" onClick={resetNeuralMap}>Reset View</button>}
+                {mapMode === 'regional' && selectedState && <button className="clear-btn" onClick={() => setSelectedState(null)}>Clear Filter ✖</button>}
+              </div>
             </div>
             <div ref={mapRef} className="hybrid-map" style={{ position: "relative" }}>
+              {mapMode === 'neural' ? (
+                <div className="neural-map-shell">
+                  <GraphView data={graphData} loading={graphLoading} highlightNode={selectedGraphNode} onNodeSelect={handleGraphNodeSelect} onReset={resetNeuralMap} />
+                  <div className="graph-legend"><span><i className="graph-dot ip" /> IP</span><span><i className="graph-dot transaction" /> Transaction</span><span><i className="graph-dot wallet" /> Wallet</span><span><i className="graph-dot flagged" /> Flagged</span></div>
+                </div>
+              ) : <>
               {hoveredState && <div className="map-tooltip">{hoveredState}</div>}
               <ComposableMap projection="geoMercator" projectionConfig={{ scale: 1000, center: [80, 22] }} style={{ width: "100%", height: "100%" }}>
                 <ZoomableGroup center={selectedState ? getStateCenter(selectedState, INDIA_GEO_JSON) : [80, 22]} zoom={selectedState ? 3 : 1} transitionDuration={1200}>
@@ -165,19 +206,20 @@ export default function Home() {
                     })}
                   </Geographies>
                   {threatDots.map(dot => (
-                    <Marker key={dot.id} coordinates={[dot.lng, dot.lat]}>
-                      <circle r={selectedState ? 3 : 2.5} fill={dot.color} stroke="#fff" strokeWidth={0.7}>
+                    <Marker key={dot.id} coordinates={[dot.lng, dot.lat]} onClick={(event) => { event.stopPropagation(); handleAlertSelect(dot.wallet); }}>
+                      <circle r={dot.highlighted ? 5 : selectedState ? 3 : 2.5} fill={dot.color} stroke={dot.highlighted ? '#111827' : '#fff'} strokeWidth={dot.highlighted ? 1.5 : 0.7} opacity={dot.highlighted ? 1 : 0.85}>
                         <title>{`${dot.wallet} | ${dot.state} | ${dot.confidence}% confidence`}</title>
                       </circle>
                     </Marker>
                   ))}
                 </ZoomableGroup>
               </ComposableMap>
+              </>}
             </div>
           </div>
           <div className="card alert-panel">
             <div className="card-header"><div className="card-title"><span className="card-title-icon">🚨</span> Threat Watchlist</div><div className="badge badge-danger">{displayedAlerts.length} FOUND</div></div>
-            <AlertTable alerts={displayedAlerts} loading={alertsLoading} selectedWallet={highlightedWallet} onSelectWallet={setHighlightedWallet} />
+            <AlertTable alerts={displayedAlerts} loading={alertsLoading} selectedWallet={highlightedWallet} onSelectWallet={handleAlertSelect} />
           </div>
         </div>
       </main>

@@ -57,7 +57,7 @@ export function getStateCenter(stateName, geoJson) {
   ];
 }
 
-export function getWalletDots(wallets, geoJson) {
+export function getWalletDots(wallets, geoJson, highlightedWallet = null) {
   let randomState = 1;
   const nextRandom = () => {
     randomState = (randomState * 1664525 + 1013904223) % 4294967296;
@@ -106,6 +106,7 @@ export function getWalletDots(wallets, geoJson) {
         wallet: wallet.wallet_address,
         state: stateName,
         confidence,
+        highlighted: wallet.wallet_address === highlightedWallet,
         color: wallet.is_threat ? (confidence >= 85 ? '#e86a6a' : '#e9a24f') : '#4f8fc9'
       };
     });

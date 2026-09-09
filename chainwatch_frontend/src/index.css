@@ -129,6 +129,34 @@ body { font-family: var(--font); background: var(--bg-primary); color: var(--tex
 .chart-header { padding: 20px 24px 12px; border-bottom: 1px solid var(--border); }
 .chart-body { flex: 1; padding: 20px 24px 24px; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .chart-legend-custom { display: flex; gap: 20px; justify-content: center; margin-top: auto; padding-top: 16px; }
+.map-card-actions { display: flex; align-items: center; gap: 12px; }
+.map-mode-toggle { display: flex; border: 1px solid var(--border); background: #f8fafc; padding: 2px; border-radius: 4px; }
+.map-mode-toggle button { border: 0; background: transparent; color: var(--text-muted); padding: 6px 9px; font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; }
+.map-mode-toggle button.active { background: var(--gov-blue); color: #ffffff; }
+.neural-map-shell { position: relative; width: 100%; height: 100%; min-height: 420px; background: radial-gradient(circle at center, #ffffff 0%, #eef3f8 100%); }
+.neural-map-shell > div:first-child { width: 100%; height: 100%; }
+.neural-graph-canvas { position: relative; width: 100%; height: 100%; padding: 20px; }
+.graph-mode-indicator { position: absolute; top: 12px; right: 16px; z-index: 2; display: flex; gap: 8px; align-items: center; padding: 5px 8px; background: rgba(255,255,255,.92); border: 1px solid var(--border); color: var(--gov-blue); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; pointer-events: none; }
+.graph-mode-indicator span { color: var(--text-muted); font-family: var(--mono); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.graph-hover-inspector { position: absolute; left: 28px; bottom: 28px; z-index: 4; width: min(330px, calc(100% - 56px)); padding: 12px 14px; background: rgba(255,255,255,.97); border: 1px solid #94a3b8; box-shadow: 0 5px 18px rgba(15,23,42,.14); color: var(--text-primary); pointer-events: auto; }
+.graph-hover-type { color: var(--gov-saffron); font-family: var(--mono); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; }
+.graph-hover-title { color: var(--gov-blue); font-size: 12px; font-weight: 800; text-transform: uppercase; margin: 3px 0 9px; }
+.graph-hover-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-top: 1px solid #e2e8f0; font-size: 10px; }
+.graph-hover-row span { color: var(--text-muted); text-transform: uppercase; font-weight: 700; flex: 0 0 auto; }
+.graph-hover-row strong { font-family: var(--mono); font-size: 10px; text-align: right; word-break: break-all; }
+.graph-copy-btn { width: 100%; margin-top: 9px; padding: 7px 9px; border: 1px solid var(--gov-blue); background: var(--gov-blue); color: #fff; font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; }
+.graph-copy-btn:hover { background: #074b84; }
+.workspace-map-toolbar { position: absolute; top: 16px; left: 16px; right: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.workspace-map-toolbar > * { pointer-events: auto; }
+.workspace-map-toolbar .ws-pane-title { margin: 0; }
+.graph-legend { position: absolute; left: 16px; bottom: 14px; display: flex; gap: 12px; padding: 7px 9px; background: rgba(255,255,255,.94); border: 1px solid var(--border); font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; }
+.graph-legend span { display: flex; align-items: center; gap: 5px; }
+.graph-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.graph-dot.ip { background: #003366; }
+.graph-dot.transaction { background: #6b7280; }
+.graph-dot.wallet { background: #138808; }
+.graph-dot.flagged { background: #cc0000; }
+.graph-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 13px; }
 
 /* ── Dashboard Grid (Bottom) & Scroll Fix ── */
 .dashboard-grid.two-column {
@@ -380,15 +408,15 @@ body { font-family: var(--font); background: var(--bg-primary); color: var(--tex
 
 /* ── UI Fixes & Tooltips ── */
 .map-tooltip { position: absolute; top: 16px; right: 16px; z-index: 10; background: #ffffff; color: #0f172a; padding: 6px 12px; border-radius: 2px; font-size: 12px; font-weight: 800; border: 1px solid #000000; box-shadow: 2px 2px 0px rgba(0,0,0,0.1); text-transform: uppercase; }
-.clear-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 4px 8px; font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; border-radius: 2px; }
+.clear-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 7px 11px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase; border-radius: 3px; white-space: nowrap; }
 .clear-btn:hover { background: #e2e8f0; color: #0f172a; }
 
 /* ── ANALYST WORKSPACE (Light Theme Bureaucratic) ── */
 .workspace-layout { display: flex; flex-direction: column; height: 100vh; background: #f8fafc; color: #0f172a; overflow: hidden; }
 .workspace-layout .ws-pane { background: #ffffff; border-right: 1px solid #cbd5e1; }
-.workspace-layout .ws-left { width: 300px; padding: 20px; background: #f1f5f9; }
-.workspace-layout .ws-center { flex: 1; display: flex; flex-direction: column; }
-.workspace-layout .ws-right { width: 380px; border-right: none; padding: 20px; }
+.workspace-layout .ws-left { flex: 0 0 280px; width: 280px; padding: 20px; background: #f1f5f9; }
+.workspace-layout .ws-center { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.workspace-layout .ws-right { flex: 0 0 400px; width: 400px; border-right: none; padding: 20px; }
 .workspace-layout .ws-pane-title { font-size: 11px; font-weight: 800; color: #475569; letter-spacing: 1px; margin-bottom: 16px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
 .workspace-layout .upload-zone { display: flex; flex-direction: column; gap: 16px; }
 .workspace-layout .upload-label { border: 2px dashed #94a3b8; padding: 30px 20px; text-align: center; font-size: 12px; font-weight: 700; color: #475569; cursor: pointer; background: #ffffff; }
@@ -397,6 +425,29 @@ body { font-family: var(--font); background: var(--bg-primary); color: var(--tex
 .workspace-layout .ws-btn.disabled { background: #cbd5e1; cursor: not-allowed; color: #94a3b8; }
 .workspace-layout .ws-instructions { margin-top: 32px; font-size: 11px; color: #64748b; line-height: 1.8; }
 .workspace-layout .ws-map-container { flex: 2; position: relative; border-bottom: 1px solid #cbd5e1; background: #ffffff; }
+.workspace-layout .neural-map-shell { min-width: 0; overflow: hidden; }
+.workspace-layout .neural-graph-canvas { min-width: 0; }
+.workspace-layout .workspace-map-toolbar {
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  gap: 8px;
+  align-items: stretch;
+  flex-direction: column;
+  max-width: calc(100% - 32px);
+}
+.workspace-layout .workspace-map-toolbar .map-card-actions {
+  flex-shrink: 0;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.workspace-layout .workspace-map-toolbar .map-mode-toggle {
+  max-width: 100%;
+}
+.workspace-layout .workspace-map-toolbar .map-mode-toggle button {
+  padding: 7px 10px;
+}
 .workspace-layout .ws-terminal { flex: 1; background: #0f172a; padding: 16px; display: flex; flex-direction: column; }
 .workspace-layout .terminal-output { flex: 1; overflow-y: auto; font-family: var(--mono); font-size: 12px; line-height: 1.6; }
 .workspace-layout .log-info { color: #cbd5e1; }
@@ -406,6 +457,10 @@ body { font-family: var(--font); background: var(--bg-primary); color: var(--tex
 .workspace-layout .ws-suspect-list { overflow-y: auto; flex: 1; padding-right: 8px; }
 .workspace-layout .report-btn { background: #ffffff; border: 1px solid #94a3b8; color: #0f172a; padding: 6px 12px; font-size: 10px; font-weight: 800; cursor: pointer; margin-top: 8px; width: 100%; box-shadow: 2px 2px 0px rgba(0,0,0,0.05); }
 .workspace-layout .report-btn:hover { background: #f1f5f9; }
+
+/* Keep the regional map indicators below the toolbar instead of stacking over it. */
+.workspace-layout .state-badge { top: 62px; right: 16px; }
+.workspace-layout .map-tooltip { top: 102px; right: 16px; }
 
 /* Keep workspace logs inside their pane as entries arrive. */
 .workspace-layout .workspace-body,

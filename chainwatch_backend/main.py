@@ -1,6 +1,7 @@
 import json
 import ast
 import io
+from html import escape
 from bisect import bisect_right
 from functools import lru_cache
 from pathlib import Path
@@ -29,6 +30,8 @@ CITY_DB = BASE_DIR / "database" / "GeoIP-City.mmdb"
 ASN_DB = BASE_DIR / "database" / "GeoIP-ASN.mmdb"
 LOCATION_CSV = BASE_DIR.parent / "IP_Address.csv"
 ASN_CSV = BASE_DIR.parent / "dbip-asn-lite-2026-09.csv"
+GRAPH_FILE = BASE_DIR / "graph.json"
+MAX_GRAPH_TRANSACTIONS = 1200
 
 # --- TEAMMATE's OFFLINE IP LOGIC ---
 try:
@@ -154,6 +157,82 @@ def lookup_ip(ip):
         pass
     return result
 
+
+def build_graph(transaction_records, flagged_wallets):
+    nodes = {}
+    links = {}
+    transaction_records = transaction_records[:MAX_GRAPH_TRANSACTIONS]
+
+    def add_node(node_id, node_type, **metadata):
+        node = nodes.setdefault(node_id, {"id": node_id, "type": node_type})
+        for key, value in metadata.items():
+            if value is not None:
+                node[key] = value
+        return node
+
+    def add_link(source, target, link_type, value=0.0):
+        link_id = f"{link_type}:{source}:{target}"
+        link = links.setdefault(link_id, {
+            "id": link_id, "source": source, "target": target, "type": link_type, "value": 0.0
+        })
+        link["value"] += float(value or 0)
+
+    for record in transaction_records:
+        tx_id = f"tx:{record['txid']}"
+        tx_value = sum(record["input_amounts"]) + sum(record["output_amounts"])
+        add_node(tx_id, "transaction", label=record["txid"][:12], value=round(tx_value, 6))
+
+        for ip_key, ip_info, link_type in (
+            (record["src_ip"], record["src_ip_info"], "BROADCASTED"),
+            (record["dst_ip"], record["dst_ip_info"], "SENT_TO_NODE"),
+        ):
+            ip_id = f"ip:{ip_key}"
+            add_node(
+                ip_id,
+                "ip",
+                label=ip_key,
+                ip=ip_key,
+                state=ip_info["state"],
+                asn=ip_info["asn"],
+                organization=ip_info["org"],
+                latitude=ip_info["latitude"],
+                longitude=ip_info["longitude"],
+            )
+            add_link(ip_id, tx_id, link_type, tx_value)
+
+        for wallet, amount in zip(record["input_addresses"], record["input_amounts"]):
+            wallet_id = f"wallet:{wallet}"
+            add_node(wallet_id, "wallet", label=wallet[:12], address=wallet, state=record["src_ip_info"]["state"])
+            add_link(wallet_id, tx_id, "INPUT_TO_TX", amount)
+
+        for wallet, amount in zip(record["output_addresses"], record["output_amounts"]):
+            wallet_id = f"wallet:{wallet}"
+            add_node(wallet_id, "wallet", label=wallet[:12], address=wallet, state=record["src_ip_info"]["state"])
+            add_link(tx_id, wallet_id, "OUTPUT_TO_WALLET", amount)
+
+    wallet_nodes = {node_id: node for node_id, node in nodes.items() if node["type"] == "wallet"}
+    for node_id, node in wallet_nodes.items():
+        wallet = node["address"]
+        node["flagged"] = wallet in flagged_wallets
+
+    for link in links.values():
+        source = nodes[link["source"]]
+        target = nodes[link["target"]]
+        source["connection_count"] = source.get("connection_count", 0) + 1
+        target["connection_count"] = target.get("connection_count", 0) + 1
+        if source["type"] == "wallet":
+            source["volume"] = source.get("volume", 0.0) + link["value"]
+        if target["type"] == "wallet":
+            target["volume"] = target.get("volume", 0.0) + link["value"]
+
+    for node in nodes.values():
+        node.setdefault("flagged", False)
+    return {
+        "nodes": list(nodes.values()),
+        "links": list(links.values()),
+        "transaction_count": len(transaction_records),
+    }
+
 # --- MODELS ---
 class AnomalyAlert(BaseModel):
     wallet_address: str
@@ -191,6 +270,15 @@ def get_anomalies():
     except:
         return []
 
+
+@app.get("/api/v1/graph")
+def get_graph():
+    try:
+        with open(GRAPH_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"nodes": [], "links": [], "transaction_count": 0}
+
 @app.post("/api/v1/ingest")
 async def ingest_ledger(file: UploadFile = File(...)):
     """
@@ -204,6 +292,7 @@ async def ingest_ledger(file: UploadFile = File(...)):
     wallet_stats = defaultdict(lambda: {
         "tx_count": 0, "volume": 0.0, "ips": set(), "states": list(), "asns": list(), "orgs": list(), "locations": list()
     })
+    transaction_records = []
     
     for _, row in df.iterrows():
         src_ip = row['src_ip']
@@ -216,6 +305,21 @@ async def ingest_ledger(file: UploadFile = File(...)):
 
         inputs = ast.literal_eval(row['input_addresses'])
         amounts = ast.literal_eval(row['input_amounts'])
+        outputs = ast.literal_eval(row['output_addresses'])
+        output_amounts = ast.literal_eval(row['output_amounts'])
+
+        dst_ip = str(row.get('dst_ip', 'Unknown'))
+        transaction_records.append({
+            "txid": str(row["txid"]),
+            "src_ip": str(src_ip),
+            "dst_ip": dst_ip,
+            "src_ip_info": ip_info,
+            "dst_ip_info": lookup_ip(dst_ip),
+            "input_addresses": inputs,
+            "input_amounts": [float(amount) for amount in amounts],
+            "output_addresses": outputs,
+            "output_amounts": [float(amount) for amount in output_amounts],
+        })
         
         for wallet, amt in zip(inputs, amounts):
             ws = wallet_stats[wallet]
@@ -293,6 +397,7 @@ async def ingest_ledger(file: UploadFile = File(...)):
         }
         for wallet, stats in wallet_stats.items()
     ]
+    graph = build_graph(transaction_records, flagged_wallets)
     
     # Save Outputs
     with open(BASE_DIR / "anomaly_results.json", "w") as f:
@@ -305,6 +410,8 @@ async def ingest_ledger(file: UploadFile = File(...)):
             "anomalies_detected": len(anomaly_results),
             "wallet_locations": wallet_locations
         }, f, indent=2)
+    with open(GRAPH_FILE, "w") as f:
+        json.dump(graph, f, indent=2)
         
     return {"message": "Ingestion and ML Analysis Complete", "anomalies_found": len(anomaly_results)}
 
@@ -327,51 +434,45 @@ def generate_pdf_report(wallet_id: str):
         <html>
         <head>
             <style>
-                body {{ font-family: 'Helvetica', sans-serif; color: #111827; padding: 40px; }}
-                .header {{ border-bottom: 4px solid #FF9933; padding-bottom: 20px; margin-bottom: 30px; }}
-                h1 {{ color: #003366; margin: 0; font-size: 24px; text-transform: uppercase; }}
-                h2 {{ color: #cc0000; font-size: 18px; margin-top: 5px; }}
-                .box {{ background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; margin-bottom: 20px; border-radius: 4px; }}
-                .label {{ font-weight: bold; color: #64748b; font-size: 12px; text-transform: uppercase; }}
-                .value {{ font-family: monospace; font-size: 16px; font-weight: bold; margin-bottom: 15px; display: block; }}
+                @page {{ size: A4; margin: 22mm 18mm 18mm; @bottom-right {{ content: "CHAINWATCH / NTRO • " counter(page); color: #64748b; font-size: 9px; }} }}
+                body {{ font-family: 'Helvetica', sans-serif; color: #172033; margin: 0; font-size: 11px; line-height: 1.45; }}
+                .masthead {{ display: flex; justify-content: space-between; border-bottom: 3px solid #e08b2c; padding-bottom: 12px; }}
+                .agency {{ color: #123d68; font-size: 18px; font-weight: bold; letter-spacing: .4px; }}
+                .unit {{ color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-top: 3px; }}
+                .classification {{ color: #a83232; border: 1px solid #d98b8b; padding: 7px 10px; font-size: 9px; font-weight: bold; letter-spacing: 1px; text-align: center; }}
+                .title {{ margin: 28px 0 4px; color: #123d68; font-size: 23px; letter-spacing: .3px; }}
+                .subtitle {{ color: #64748b; font-size: 11px; }}
+                .rule {{ border: 0; border-top: 1px solid #d5dce5; margin: 20px 0; }}
+                .section {{ color: #123d68; border-bottom: 2px solid #123d68; padding-bottom: 5px; margin: 22px 0 12px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }}
+                .grid {{ display: table; width: 100%; border-collapse: separate; border-spacing: 0 7px; }}
+                .cell {{ display: table-cell; width: 50%; vertical-align: top; padding-right: 16px; }}
+                .label {{ color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: .7px; }}
+                .value {{ color: #172033; font-size: 13px; font-weight: bold; margin-top: 2px; word-break: break-all; }}
+                .score {{ background: #fff3e5; border-left: 5px solid #e08b2c; padding: 12px 14px; margin: 18px 0; }}
+                .score strong {{ color: #a83232; font-size: 22px; }}
+                .evidence {{ background: #f5f7fa; border: 1px solid #d5dce5; padding: 15px; font-family: monospace; font-size: 10px; }}
+                .notice {{ margin-top: 30px; padding: 10px; border-top: 1px solid #d5dce5; color: #64748b; font-size: 9px; }}
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>Government of India | NTRO</h1>
-                <h2>CLASSIFIED: THREAT INTELLIGENCE DOSSIER</h2>
+            <div class="masthead">
+                <div><div class="agency">Government of India | NTRO</div><div class="unit">National Technical Research Organisation · Cyber Intelligence Division</div></div>
+                <div class="classification">RESTRICTED<br/>THREAT INTELLIGENCE</div>
             </div>
-            
-            <p><strong>Date Generated:</strong> {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-            
-            <div class="box">
-                <span class="label">Target Entity (Wallet Address)</span>
-                <span class="value">{threat['wallet_address']}</span>
-                
-                <span class="label">AI Confidence Score</span>
-                <span class="value" style="color: #cc0000;">{threat['confidence_score']}%</span>
-                
-                <span class="label">Behavioral Classification</span>
-                <span class="value">{threat['cluster_name']}</span>
-            </div>
-            
-            <div class="box">
-                <h3>Geographical & Network Footprint</h3>
-                <span class="label">Primary Operating Jurisdiction</span>
-                <span class="value">{threat['primary_state'].upper()}</span>
-                
-                <span class="label">Primary ISP / ASN</span>
-                <span class="value">{threat['isp']} ({threat['asn']})</span>
-            </div>
-            
-            <div class="box">
-                <h3>AI Evidence Log</h3>
-                <p style="font-family: monospace;">{threat['reason']}</p>
-            </div>
-            
-            <p style="text-align: center; color: #94a3b8; font-size: 10px; margin-top: 50px;">
-                Generated by ChainWatch Core Engine. Document is subject to Official Secrets Act.
-            </p>
+            <div class="title">Threat Intelligence Dossier</div>
+            <div class="subtitle">Automated analytical record · Generated {pd.Timestamp.now().strftime('%d %B %Y, %H:%M UTC')}</div>
+            <hr class="rule" />
+            <div class="section">01 / Subject Identification</div>
+            <div class="grid"><div class="cell"><div class="label">Wallet address</div><div class="value">{escape(threat['wallet_address'])}</div></div><div class="cell"><div class="label">Behavioural classification</div><div class="value">{escape(threat['cluster_name'])}</div></div></div>
+            <div class="score"><span class="label">Model confidence assessment</span><br/><strong>{threat['confidence_score']}%</strong> &nbsp; Statistical deviation from learned wallet baseline</div>
+            <div class="section">02 / Network and Geographic Footprint</div>
+            <div class="grid"><div class="cell"><div class="label">Primary jurisdiction</div><div class="value">{escape(str(threat['primary_state']).upper())}</div></div><div class="cell"><div class="label">Network organisation</div><div class="value">{escape(str(threat['isp']))}</div></div></div>
+            <div class="grid"><div class="cell"><div class="label">Autonomous system</div><div class="value">{escape(str(threat['asn']))}</div></div><div class="cell"><div class="label">Record reference</div><div class="value">CW-{escape(wallet_id[:12].upper())}</div></div></div>
+            <div class="section">03 / Analytical Evidence</div>
+            <div class="grid"><div class="cell"><div class="label">Observed transactions</div><div class="value">{threat['tx_count']}</div></div><div class="cell"><div class="label">Total observed volume</div><div class="value">{threat['total_volume_btc']} BTC</div></div></div>
+            <div class="grid"><div class="cell"><div class="label">Unique source IPs</div><div class="value">{threat['unique_ip_count']}</div></div><div class="cell"><div class="label">Detection engine</div><div class="value">Isolation Forest / K-Means</div></div></div>
+            <div class="evidence">{escape(threat['reason'])}</div>
+            <div class="notice"><strong>Handling notice:</strong> This synthetic intelligence record is generated by the ChainWatch Core Engine for authorised analytical use. It is not a finding of criminal liability. Distribution is restricted under the applicable information-handling policy.</div>
         </body>
         </html>
         """

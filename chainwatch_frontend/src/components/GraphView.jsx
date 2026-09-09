@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
 const NODE_COLORS = {
@@ -12,8 +12,90 @@ const NODE_SIZE = {
   wallet: 4,
 };
 
-export default function GraphView({ data, loading, highlightNode }) {
+const OVERVIEW_NEIGHBORS_PER_FLAGGED = 6;
+const OVERVIEW_CONTEXT_NODES = 12;
+const INVESTIGATION_NEIGHBORS = 48;
+
+function endpointId(endpoint) {
+  return endpoint?.id ?? endpoint;
+}
+
+function nodeImportance(node) {
+  return Math.log1p(Math.max(
+    Number(node.value || 0),
+    Number(node.volume || 0),
+    Number(node.connection_count || 0)
+  ));
+}
+
+export default function GraphView({ data, loading, highlightNode, onNodeSelect, onReset }) {
   const fgRef = useRef();
+  const [hoveredNode, setHoveredNode] = useState(null);
+  const [copyStatus, setCopyStatus] = useState('');
+  const investigationMode = Boolean(highlightNode);
+
+  const focusedData = useMemo(() => {
+    if (!data?.nodes?.length) return data;
+
+    const nodesById = new Map(data.nodes.map(node => [node.id, node]));
+    const adjacency = new Map(data.nodes.map(node => [node.id, []]));
+    data.links.forEach(link => {
+      const source = endpointId(link.source);
+      const target = endpointId(link.target);
+      adjacency.get(source)?.push({ id: target, value: link.value || 0 });
+      adjacency.get(target)?.push({ id: source, value: link.value || 0 });
+    });
+
+    const rankNeighbor = ({ id, value }) => {
+      const node = nodesById.get(id);
+      if (!node) return -1;
+      return (node.flagged ? 100000 : 0) + (Math.log1p(Number(value)) * 100) + nodeImportance(node);
+    };
+    const selectedIds = new Set();
+
+    if (investigationMode && nodesById.has(highlightNode)) {
+      selectedIds.add(highlightNode);
+      adjacency.get(highlightNode)
+        .sort((first, second) => rankNeighbor(second) - rankNeighbor(first))
+        .slice(0, INVESTIGATION_NEIGHBORS)
+        .forEach(neighbor => selectedIds.add(neighbor.id));
+    } else {
+      data.nodes.filter(node => node.flagged && node.type === 'wallet').forEach(node => {
+        selectedIds.add(node.id);
+        adjacency.get(node.id)
+          .sort((first, second) => rankNeighbor(second) - rankNeighbor(first))
+          .slice(0, OVERVIEW_NEIGHBORS_PER_FLAGGED)
+          .forEach(neighbor => selectedIds.add(neighbor.id));
+      });
+
+      data.nodes
+        .filter(node => !selectedIds.has(node.id))
+        .sort((first, second) => nodeImportance(second) - nodeImportance(first))
+        .slice(0, OVERVIEW_CONTEXT_NODES)
+        .forEach(node => selectedIds.add(node.id));
+    }
+
+    const nodes = data.nodes.filter(node => selectedIds.has(node.id));
+    const links = data.links.filter(link => selectedIds.has(endpointId(link.source)) && selectedIds.has(endpointId(link.target)));
+    return { ...data, nodes, links };
+  }, [data, highlightNode, investigationMode]);
+
+  const normalizedNodeSizes = useMemo(() => {
+    if (!focusedData?.nodes) return new Map();
+    const maxima = focusedData.nodes.reduce((result, node) => {
+      const type = node.type || 'wallet';
+      result[type] = Math.max(result[type] || 0, nodeImportance(node));
+      return result;
+    }, {});
+
+    return new Map(focusedData.nodes.map(node => {
+      const type = node.type || 'wallet';
+      const ratio = maxima[type] ? nodeImportance(node) / maxima[type] : 0;
+      if (type === 'wallet') return [node.id, node.flagged ? 10 + ratio * 4 : 5 + ratio * 3];
+      if (type === 'ip') return [node.id, 5 + ratio * 2];
+      return [node.id, 3 + ratio * 2];
+    }));
+  }, [focusedData]);
 
   useEffect(() => {
     if (fgRef.current) {
@@ -23,20 +105,20 @@ export default function GraphView({ data, loading, highlightNode }) {
 
   // Derive neighbors for highlight dimming
   const neighbors = useMemo(() => {
-    if (!highlightNode || !data) return new Set();
+    if (!highlightNode || !focusedData) return new Set();
     const s = new Set([highlightNode]);
-    data.links.forEach(l => {
-      const srcId = l.source.id ?? l.source;
-      const tgtId = l.target.id ?? l.target;
+    focusedData.links.forEach(l => {
+      const srcId = endpointId(l.source);
+      const tgtId = endpointId(l.target);
       if (srcId === highlightNode) s.add(tgtId);
       if (tgtId === highlightNode) s.add(srcId);
     });
     return s;
-  }, [highlightNode, data]);
+  }, [highlightNode, focusedData]);
 
   useEffect(() => {
-    if (highlightNode && fgRef.current && data?.nodes) {
-      const node = data.nodes.find(n => n.id === highlightNode);
+    if (highlightNode && fgRef.current && focusedData?.nodes) {
+      const node = focusedData.nodes.find(n => n.id === highlightNode);
       if (node && node.x !== undefined && node.y !== undefined) {
         // Delay slightly in case simulation is settling
         setTimeout(() => {
@@ -45,11 +127,50 @@ export default function GraphView({ data, loading, highlightNode }) {
         }, 100);
       }
     }
-  }, [highlightNode, data]);
+  }, [highlightNode, focusedData]);
+
+  useEffect(() => {
+    if (!highlightNode && fgRef.current && focusedData?.nodes?.length) {
+      requestAnimationFrame(() => fgRef.current.zoomToFit(500, 72));
+    }
+  }, [highlightNode, focusedData]);
+
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') onReset?.();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onReset]);
+
+  const resetGraph = useCallback(() => {
+    onReset?.();
+    setHoveredNode(null);
+    setCopyStatus('');
+    requestAnimationFrame(() => fgRef.current?.zoomToFit(500, 72));
+  }, [onReset]);
+
+  const copyIpDetails = useCallback(async () => {
+    if (!hoveredNode?.ip) return;
+    const details = [
+      `IP: ${hoveredNode.ip}`,
+      `State: ${hoveredNode.state || 'N/A'}`,
+      `ASN: ${hoveredNode.asn || 'N/A'}`,
+      `Organization: ${hoveredNode.organization || 'N/A'}`
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(details);
+      setCopyStatus('Copied');
+      window.setTimeout(() => setCopyStatus(''), 1600);
+    } catch {
+      setCopyStatus('Copy unavailable');
+    }
+  }, [hoveredNode]);
 
   const nodeColor = useCallback((node) => {
     const type = node.type || 'wallet';
-    const baseColor = node.flagged ? NODE_COLORS[type].flagged : NODE_COLORS[type].normal;
+    const colors = NODE_COLORS[type] || NODE_COLORS.wallet;
+    const baseColor = node.flagged ? colors.flagged : colors.normal;
     if (highlightNode && !neighbors.has(node.id)) {
       return 'rgba(200, 200, 200, 0.2)'; // Dim non-neighbors
     }
@@ -57,14 +178,13 @@ export default function GraphView({ data, loading, highlightNode }) {
   }, [highlightNode, neighbors]);
 
   const nodeVal = useCallback((node) => {
-    const base = NODE_SIZE[node.type || 'wallet'] || 4;
-    return node.flagged ? base * 2 : base;
-  }, []);
+    return normalizedNodeSizes.get(node.id) || NODE_SIZE[node.type || 'wallet'] || 4;
+  }, [normalizedNodeSizes]);
 
   const linkColor = useCallback((link) => {
     if (highlightNode) {
-      const srcId = link.source.id ?? link.source;
-      const tgtId = link.target.id ?? link.target;
+      const srcId = endpointId(link.source);
+      const tgtId = endpointId(link.target);
       if (srcId !== highlightNode && tgtId !== highlightNode) {
         return 'rgba(200, 200, 200, 0.05)';
       }
@@ -89,23 +209,51 @@ export default function GraphView({ data, loading, highlightNode }) {
   }
 
   if (!data) return null;
+  if (!focusedData?.nodes?.length) return <div className="graph-empty">No graph data available. Ingest a ledger to build the Neural Map.</div>;
 
   return (
-    <ForceGraph2D
-      ref={fgRef}
-      graphData={data}
-      nodeColor={nodeColor}
-      nodeVal={nodeVal}
-      linkColor={linkColor}
-      linkWidth={0.8}
-      linkDirectionalParticles={2}
-      linkDirectionalParticleWidth={1.5}
-      linkDirectionalParticleColor={linkColor}
-      backgroundColor="transparent"
-      cooldownTicks={120}
-      nodeLabel={(node) =>
-        `[${(node.type || '').toUpperCase()}] ${node.id}${node.flagged ? '\n⚠ FLAGGED' : ''}`
-      }
-    />
+    <div className="neural-graph-canvas">
+      <div className="graph-mode-indicator">
+        {investigationMode ? 'Investigation view' : 'Overview view'}
+        <span>{focusedData.nodes.length} nodes · {focusedData.links.length} links</span>
+      </div>
+      <ForceGraph2D
+        ref={fgRef}
+        graphData={focusedData}
+        nodeColor={nodeColor}
+        nodeVal={nodeVal}
+        linkColor={linkColor}
+        linkWidth={0.65}
+        linkDirectionalParticles={0}
+        linkDirectionalParticleWidth={1.5}
+        linkDirectionalParticleColor={linkColor}
+        backgroundColor="transparent"
+        cooldownTicks={120}
+        onNodeClick={onNodeSelect}
+        onNodeHover={setHoveredNode}
+        onBackgroundClick={resetGraph}
+        nodeLabel={(node) => (investigationMode || node.flagged || node.type === 'ip')
+          ? `[${(node.type || '').toUpperCase()}] ${node.label || node.id}${node.flagged ? '\nFLAGGED' : ''}${node.state ? `\n${node.state}` : ''}`
+          : ''}
+      />
+      {hoveredNode && (
+        <div className="graph-hover-inspector" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="graph-hover-type">{hoveredNode.type || 'entity'}</div>
+          <div className="graph-hover-title">{hoveredNode.type === 'wallet' ? 'Wallet intelligence' : hoveredNode.type === 'ip' ? 'IP intelligence' : 'Transaction intelligence'}</div>
+          {hoveredNode.type === 'wallet' && <>
+            <div className="graph-hover-row"><span>Wallet</span><strong>{hoveredNode.address || hoveredNode.id.replace(/^wallet:/, '')}</strong></div>
+            <div className="graph-hover-row"><span>State</span><strong>{hoveredNode.state || 'N/A'}</strong></div>
+          </>}
+          {hoveredNode.type === 'ip' && <>
+            <div className="graph-hover-row"><span>IP</span><strong>{hoveredNode.ip || hoveredNode.id.replace(/^ip:/, '')}</strong></div>
+            <div className="graph-hover-row"><span>State</span><strong>{hoveredNode.state || 'N/A'}</strong></div>
+            <div className="graph-hover-row"><span>ASN</span><strong>{hoveredNode.asn || 'N/A'}</strong></div>
+            <div className="graph-hover-row"><span>Organisation</span><strong>{hoveredNode.organization || 'N/A'}</strong></div>
+            <button className="graph-copy-btn" onClick={copyIpDetails}>{copyStatus || 'Copy IP intelligence'}</button>
+          </>}
+          {hoveredNode.type === 'transaction' && <div className="graph-hover-row"><span>Transaction</span><strong>{hoveredNode.label || hoveredNode.id.replace(/^tx:/, '')}</strong></div>}
+        </div>
+      )}
+    </div>
   );
 }

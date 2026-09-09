@@ -1,631 +1,769 @@
-<div align="center">
+# ChainWatch — National Crypto-Threat Intelligence Network
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" height="80" alt="Emblem of India"/>
-
-# ChainWatch
-
-### National Crypto-Threat Intelligence Network
-**Government of India · National Technical Research Organisation (NTRO)**
-
-*Securing India's digital financial infrastructure through AI-driven blockchain forensics*
-
----
-
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-19.x-61DAFB?style=flat-square&logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?style=flat-square&logo=vite&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/Classification-RESTRICTED-cc0000?style=flat-square)
-
-</div>
+> **NTRO Proof of Concept** · Offline AI-driven blockchain forensics platform for detecting illicit cryptocurrency activity across Indian jurisdictions.
 
 ---
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [System Architecture](#system-architecture)
-- [Key Features](#key-features)
-- [Technology Stack](#technology-stack)
-- [Repository Structure](#repository-structure)
-- [ML Pipeline Deep Dive](#ml-pipeline-deep-dive)
-- [API Reference](#api-reference)
-- [Frontend Application](#frontend-application)
-- [Data Generator](#data-generator)
-- [Getting Started](#getting-started)
-- [Workflow Guide](#workflow-guide)
-- [Threat Classification Model](#threat-classification-model)
-- [PDF Intelligence Reports](#pdf-intelligence-reports)
-- [Docker & Infrastructure](#docker--infrastructure)
-- [Sample Data Output](#sample-data-output)
-- [Known Limitations & Future Roadmap](#known-limitations--future-roadmap)
+1. [Project Overview](#1-project-overview)
+2. [System Architecture](#2-system-architecture)
+3. [Repository Structure](#3-repository-structure)
+4. [Technology Stack](#4-technology-stack)
+5. [Data Flow — End to End](#5-data-flow--end-to-end)
+6. [Service 1 — Streamlit Data Generator](#6-service-1--streamlit-data-generator)
+7. [Service 2 — FastAPI Core Engine](#7-service-2--fastapi-core-engine)
+   - [IP & ASN Geolocation Subsystem](#71-ip--asn-geolocation-subsystem)
+   - [ML Pipeline](#72-ml-pipeline)
+   - [REST API Reference](#73-rest-api-reference)
+   - [Data Models](#74-data-models)
+8. [Service 3 — React Frontend](#8-service-3--react-frontend)
+   - [Routing](#81-routing)
+   - [Home Dashboard](#82-home-dashboard)
+   - [Analyst Workspace](#83-analyst-workspace)
+   - [Component Reference](#84-component-reference)
+   - [Map Utilities](#85-map-utilities)
+9. [Persisted Data Files](#9-persisted-data-files)
+10. [Infrastructure — Docker & Neo4j](#10-infrastructure--docker--neo4j)
+11. [Setup & Installation](#11-setup--installation)
+12. [Running the Project](#12-running-the-project)
+13. [Stopping the Project](#13-stopping-the-project)
+14. [Configuration Reference](#14-configuration-reference)
+15. [Threat Classification Model](#15-threat-classification-model)
+16. [PDF Dossier Generation](#16-pdf-dossier-generation)
+17. [Security & Privacy Notes](#17-security--privacy-notes)
+18. [Known Limitations & Future Work](#18-known-limitations--future-work)
 
 ---
 
-## Overview
+## 1. Project Overview
 
-ChainWatch is a fully **offline**, AI-powered cryptocurrency threat intelligence platform built as a proof-of-concept for the National Technical Research Organisation (NTRO). It monitors, detects, and analyzes illicit Bitcoin transaction patterns across all Indian jurisdictions — without any external network dependency.
+ChainWatch is a fully **offline** threat intelligence platform built as an NTRO proof of concept. It ingests a Bitcoin-style transaction ledger (CSV), runs a two-stage unsupervised machine learning pipeline to identify anomalous wallet behaviour, enriches each result with geolocation and ASN data, and presents everything in an interactive React dashboard backed by a map of India.
 
-The system ingests raw Bitcoin ledger data (CSV format), runs a two-stage machine learning pipeline (Isolation Forest + K-Means clustering), resolves geographic and ISP attribution via offline MaxMind databases, and surfaces flagged threat actors in a government-grade executive dashboard — complete with auto-generated classified PDF dossiers.
+**Core capabilities:**
 
-> **This is a Proof of Concept.** All transaction data is synthetically generated to simulate realistic financial crime patterns. No real transaction data is used.
+- Synthetic ledger generation with planted anomalies targeting any of India's 36 states and union territories
+- Offline IP-to-geolocation resolution using MaxMind MMDB databases and a fallback CSV range table
+- Offline ASN/ISP enrichment using a DB-IP ASN Lite CSV
+- Dual ML detection: Isolation Forest (anomaly scoring) + K-Means (behavioural clustering)
+- Interactive choropleth-style map of India with per-wallet threat dots
+- Infinite-scroll threat ticker, metric summary cards, and filterable alert watchlist
+- Analyst Workspace with live engine logs, geospatial isolation view, and per-suspect detail cards
+- One-click PDF dossier generation styled as an official NTRO intelligence record
 
 ---
 
-## System Architecture
+## 2. System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        ANALYST WORKFLOW                             │
-│                                                                     │
-│  ┌─────────────────┐     ledger.csv     ┌───────────────────────┐  │
-│  │  Streamlit Data │ ──────────────────▶│  React Workspace UI   │  │
-│  │  Generator App  │                    │  (Upload & Ingest)    │  │
-│  └─────────────────┘                    └──────────┬────────────┘  │
-│                                                    │ POST /ingest  │
-│                                         ┌──────────▼────────────┐  │
-│                                         │  FastAPI Core Engine  │  │
-│                                         │  (Python Backend)     │  │
-│                                         │  ┌─────────────────┐  │  │
-│                                         │  │ Feature Eng.    │  │  │
-│                                         │  │ IsolationForest │  │  │
-│                                         │  │ K-Means Cluster │  │  │
-│                                         │  │ GeoIP Resolve   │  │  │
-│                                         │  └────────┬────────┘  │  │
-│                                         └───────────┼───────────┘  │
-│                                                     │              │
-│                         ┌───────────────────────────┤              │
-│                         │                           │              │
-│              ┌──────────▼──────────┐   ┌────────────▼──────────┐  │
-│              │  anomaly_results    │   │     stats.json        │  │
-│              │       .json         │   │  (aggregate metrics)  │  │
-│              └──────────┬──────────┘   └────────────┬──────────┘  │
-│                         │                           │              │
-│              ┌──────────▼───────────────────────────▼──────────┐  │
-│              │         React Executive Dashboard (Home)        │  │
-│              │  Metric Cards · Threat Map · Alert Table ·      │  │
-│              │  Ticker · Live Threat Banner · PDF Reports       │  │
-│              └───────────────────────────────────────────────  ┘  │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        USER BROWSER                             │
+│                                                                 │
+│   ┌─────────────────────┐      ┌──────────────────────────┐    │
+│   │   React + Vite      │      │   Streamlit Generator    │    │
+│   │   (port 5173)       │      │   (port 8501)            │    │
+│   │                     │      │                          │    │
+│   │  Home Dashboard     │      │  Synthetic ledger UI     │    │
+│   │  Analyst Workspace  │      │  → downloads ledger.csv  │    │
+│   └────────┬────────────┘      └──────────────────────────┘    │
+│            │ REST / HTTP                                        │
+└────────────┼────────────────────────────────────────────────────┘
+             │
+             ▼
+┌────────────────────────────────┐
+│   FastAPI Core Engine          │
+│   (port 8000)                  │
+│                                │
+│   POST /api/v1/ingest          │  ← receives ledger.csv
+│     └─ Feature engineering     │
+│     └─ IP/ASN lookup           │  ← MaxMind MMDB + CSV ranges
+│     └─ Isolation Forest        │
+│     └─ K-Means clustering      │
+│     └─ Writes JSON outputs     │
+│                                │
+│   GET  /api/v1/anomalies       │  ← serves anomaly_results.json
+│   GET  /api/v1/stats           │  ← serves stats.json
+│   GET  /api/v1/report/{id}     │  ← generates & streams PDF
+└────────────────────────────────┘
+             │
+             ▼
+┌────────────────────────────────┐
+│   Local File System            │
+│   anomaly_results.json         │
+│   stats.json                   │
+│   NTRO_Report_*.pdf            │
+└────────────────────────────────┘
+             │  (optional, not yet wired)
+             ▼
+┌────────────────────────────────┐
+│   Neo4j 5.12 (Docker)          │
+│   port 7474 (browser UI)       │
+│   port 7687 (Bolt)             │
+│   Wallet → TX → Wallet graphs  │
+└────────────────────────────────┘
 ```
 
----
-
-## Key Features
-
-### Intelligence Dashboard
-- **Government-grade UI** styled to NTRO/NIC standards with the Indian tricolor palette (Saffron `#FF9933`, White, Navy `#003366`)
-- **Live Threat Ticker** — horizontal scrolling feed of all detected anomalies with wallet IDs, BTC volumes, and confidence scores
-- **Live Threat Banner** — critical alert banner triggered when anomaly isolation is confirmed
-- **Interactive India Map** — click any state to zoom in, filter alerts by that jurisdiction, and see scatter-plotted transaction origin points
-- **Threat Watchlist** — sortable alert panel with file-style cards showing origin state, ISP/ASN attribution, and threat classification
-- **Metric Cards** — real-time counts for Transactions Analyzed, Unique Wallets, and Threats Isolated
-- **Accessibility Controls** — A- / A / A+ font scaling buttons and skip-to-content link
-
-### Analyst Workspace
-- **Drag-and-drop CSV ingestion** — upload a `ledger.csv` file directly through the browser
-- **Simulated engine log terminal** — real-time log stream showing pipeline stages (GeoIP resolution → Isolation Forest → K-Means)
-- **Geospatial Isolation Map** — state-level click-to-zoom with top anomaly states displayed
-- **Regional Suspects Panel** — per-state filtered list of flagged wallets with volumes, ISP info, and one-click PDF generation
-- **Top Anomaly States indicator** — live-computed ranking of most active threat jurisdictions
-
-### ML Anomaly Engine
-- **Two-stage detection:** Isolation Forest flags statistical outliers; K-Means clusters behavioral patterns
-- **Feature engineering per wallet:** transaction count, total BTC volume, unique IP count
-- **Confidence scoring:** mapped from Isolation Forest decision function to a human-readable 60–99% range
-- **Six behavioral threat classes** (see [Threat Classification Model](#threat-classification-model))
-- **Offline GeoIP & ASN resolution** via MaxMind `.mmdb` databases with CSV fallback — no external API calls
-
-### Data Generator
-- **Streamlit app** for generating augmented synthetic Bitcoin ledger data
-- **Reference-backed IP generation** using the supplied Indian IP range CSV
-- **Power-law distribution** to mimic real financial behavior (80% normal retail, ~5% planted anomalies)
-- **36 Indian states and UTs** supported as target jurisdictions
-- **One-click CSV download** for immediate ingestion
-
-### PDF Intelligence Dossiers
-- Auto-generated **NTRO-classified PDF reports** for any flagged wallet
-- Includes: wallet address, AI confidence score, behavioral classification, geographic jurisdiction, ISP/ASN attribution, and AI evidence log
-- Styled as official government documents, subject to the Official Secrets Act disclaimer
-- Generated on-demand via `GET /api/v1/report/{wallet_id}` and streamed directly to the browser
+All three application services run **locally** with no outbound network calls. The MaxMind databases, ASN CSV, and GeoJSON map data are loaded from disk.
 
 ---
 
-## Technology Stack
-
-### Backend
-| Component | Technology | Purpose |
-|---|---|---|
-| API Framework | FastAPI | REST API, file upload, response streaming |
-| ML — Anomaly Detection | scikit-learn `IsolationForest` | Statistical outlier detection |
-| ML — Clustering | scikit-learn `KMeans` | Behavioral pattern grouping |
-| Data Processing | pandas, numpy | Feature engineering, CSV parsing |
-| GeoIP Resolution | maxminddb + GeoIP-City.mmdb | Offline IP → Indian State mapping |
-| ASN Resolution | maxminddb + GeoIP-ASN.mmdb | Offline IP → ISP/ASN mapping |
-| PDF Generation | WeasyPrint | HTML-to-PDF classified report rendering |
-| Data Models | Pydantic | Request/response validation |
-| Preprocessing | scikit-learn `StandardScaler` | Feature normalization before ML |
-
-### Frontend
-| Component | Technology | Purpose |
-|---|---|---|
-| UI Framework | React 19 | Component-based dashboard |
-| Build Tool | Vite 8 | Dev server, HMR, production bundling |
-| Routing | react-router-dom v7 | SPA navigation (Dashboard ↔ Workspace) |
-| Map Visualization | react-simple-maps | Zoomable, clickable India choropleth map |
-| Graph Visualization | react-force-graph-2d | Force-directed entity correlation graph |
-| Charts | Recharts | Donut (risk distribution) + Bar (cluster assessment) |
-| Styling | CSS Custom Properties | Government color design system |
-| Fonts | Google Fonts | Inter (UI) + JetBrains Mono (code/terminals) |
-
-### Data Generation
-| Component | Technology | Purpose |
-|---|---|---|
-| App Framework | Streamlit | Interactive web UI for data generation |
-| Synthetic Data | Faker + NumPy | Realistic wallet addresses, IPs, timestamps |
-| Distribution | Pareto / Power-law bias | Realistic normal vs. anomalous ratio |
-
-### Infrastructure
-| Component | Technology | Purpose |
-|---|---|---|
-| Graph Database | Neo4j 5.12.0 (Docker) | Transaction graph storage and traversal |
-| Containerization | Docker Compose | Neo4j service orchestration |
-
----
-
-## Repository Structure
+## 3. Repository Structure
 
 ```
 chainwatch/
+├── Start.sh                        # Launch all 3 services in parallel
+├── Kill.sh                         # Graceful teardown of all services
+├── docker-compose.yml              # Neo4j graph database
+├── IP_Address.csv                  # India IP range → state/city/lat/lng lookup table
+├── dbip-asn-lite-2026-09.csv       # DB-IP ASN Lite: IP range → ASN/org
+├── india.geojson                   # India state boundaries (TopoJSON-compatible)
+├── logs/
+│   ├── backend.log                 # FastAPI stdout/stderr
+│   ├── generator.log               # Streamlit stdout/stderr
+│   └── frontend.log                # Vite dev server stdout/stderr
 │
-├── chainwatch_backend/              # Python FastAPI backend
-│   ├── main.py                      # Core API + ML pipeline
-│   ├── generator_app.py             # Streamlit data generator
-│   ├── anomaly_results.json         # Latest ML output (auto-updated)
-│   ├── stats.json                   # Aggregate metrics (auto-updated)
-│   ├── NTRO_Report_*.pdf            # Sample generated PDF dossier
-│   ├── database/                    # MaxMind .mmdb files (not in repo)
-│   │   ├── GeoIP-City.mmdb          # Offline IP → State mapping
-│   │   └── GeoIP-ASN.mmdb           # Offline IP → ISP/ASN mapping
-│   └── venv/                        # Python virtual environment
+├── chainwatch_backend/
+│   ├── main.py                     # FastAPI application — all endpoints + ML pipeline
+│   ├── generator_app.py            # Streamlit synthetic ledger generator
+│   ├── anomaly_results.json        # Output: flagged wallets (written by /ingest)
+│   ├── stats.json                  # Output: aggregate metrics + all wallet locations
+│   ├── venv/                       # Python virtual environment
+│   └── database/                   # (expected) MaxMind MMDB files
+│       ├── GeoIP-City.mmdb
+│       └── GeoIP-ASN.mmdb
 │
-├── chainwatch_frontend/             # React + Vite frontend
-│   ├── src/
-│   │   ├── App.jsx                  # Root component + SPA routing
-│   │   ├── Home.jsx                 # Executive dashboard (main view)
-│   │   ├── Workspace.jsx            # Analyst workspace (ingest + isolate)
-│   │   ├── india.json               # India GeoJSON for map rendering
-│   │   ├── mapUtils.js              # State coordinate lookup + dot generation
-│   │   ├── index.css                # Full design system + all component styles
-│   │   └── components/
-│   │       ├── MetricCards.jsx      # Top-level KPI cards
-│   │       ├── AlertTable.jsx       # Threat watchlist with selection
-│   │       ├── GraphView.jsx        # Force-directed graph (Neo4j data)
-│   │       └── ChartsView.jsx       # Recharts donut + bar charts
-│   ├── public/
-│   │   ├── favicon.svg
-│   │   └── blockchain.png
-│   ├── index.html                   # HTML entry point (loads Google Fonts)
-│   ├── vite.config.js               # Vite config (port 5173, auto-open)
-│   ├── package.json                 # npm dependencies and scripts
-│   ├── tsconfig.json                # TypeScript config (type-check only)
-│   └── FRONTEND_DOCUMENTATION.md   # Detailed frontend reference
-│
-├── docker-compose.yml               # Neo4j 5.12 container definition
-├── india.geojson                    # India boundary data (root copy)
-├── .gitignore
-└── README.md                        # This file
+└── chainwatch_frontend/
+    ├── index.html
+    ├── vite.config.js
+    ├── package.json
+    └── src/
+        ├── main.jsx                # React entry point
+        ├── App.jsx                 # Router (/ and /workspace)
+        ├── Home.jsx                # Executive Dashboard page
+        ├── Workspace.jsx           # Analyst Workspace page
+        ├── index.css               # Global styles (all custom CSS lives here)
+        ├── mapUtils.js             # Geospatial helpers: dot placement, state centers
+        ├── india.json              # India GeoJSON bundled with frontend
+        └── components/
+            ├── MetricCards.jsx     # Summary KPI strip
+            ├── AlertTable.jsx      # Threat watchlist rows
+            ├── GraphView.jsx       # Force-directed wallet/TX/IP graph (react-force-graph-2d)
+            └── ChartsView.jsx      # Pie + Bar charts (recharts)
 ```
 
 ---
 
-## ML Pipeline Deep Dive
+## 4. Technology Stack
 
-### Why Augmented Synthetic Data?
+| Layer | Technology | Version | Purpose |
+|---|---|---|---|
+| **Frontend framework** | React | 19.2 | UI |
+| **Frontend build** | Vite | 8.2 | Dev server & bundler |
+| **Routing** | react-router-dom | 7.18 | SPA routing |
+| **Maps** | react-simple-maps | 3.0 | SVG choropleth map |
+| **Graph viz** | react-force-graph-2d | 1.29 | Wallet/TX force graph |
+| **Charts** | recharts | 3.10 | Pie & bar charts |
+| **Backend framework** | FastAPI | latest | REST API |
+| **ASGI server** | Uvicorn | latest | HTTP server with --reload |
+| **Data processing** | pandas, numpy | latest | CSV parsing, feature vectors |
+| **ML — anomaly** | scikit-learn IsolationForest | latest | Unsupervised outlier detection |
+| **ML — clustering** | scikit-learn KMeans | latest | Behavioural grouping |
+| **Geolocation (primary)** | maxminddb | latest | Reads MaxMind MMDB files |
+| **Geolocation (fallback)** | IP_Address.csv + bisect | built-in | IP range → state/lat/lng |
+| **ASN enrichment** | dbip-asn-lite CSV + bisect | built-in | IP range → ASN/org |
+| **PDF generation** | WeasyPrint | latest | HTML → PDF conversion |
+| **Data generation** | Streamlit + Faker | latest | Synthetic ledger UI |
+| **Graph database** | Neo4j 5.12 | Docker | Wallet relationship storage |
+| **Containerisation** | Docker Compose | 3.8 | Neo4j service |
 
-Pure `np.random` uniform distributions produce data where every wallet looks equally random — an ML model cannot find anomalies because *everything* looks like one. Real financial fraud follows **Power Laws (Pareto distributions)**: the vast majority of transactions are normal retail activity, while a small fraction are high-volume, high-frequency, multi-IP threat actors.
+---
 
-The generator deliberately injects "clustered noise" by forcing specific wallets to transact rapidly across high-risk IPs, giving the ML model a true mathematical signal to detect.
+## 5. Data Flow — End to End
 
-### Stage 1 — Feature Engineering
+```
+Step 1  GENERATE
+        Analyst opens Streamlit (port 8501)
+        Selects a target Indian state
+        Clicks "Generate 1,000 Transactions"
+        → 950 normal Pareto-distributed retail txns
+        → 50 high-volume anomalous txns concentrated in the target state
+        Downloads ledger.csv
 
-For every wallet address in the ingested CSV, three features are computed:
+Step 2  INGEST
+        Analyst opens Workspace (React, /workspace)
+        Selects ledger.csv → clicks "RUN AI PIPELINE"
+        Frontend POSTs multipart/form-data to POST /api/v1/ingest
 
-| Feature | Description |
+Step 3  FEATURE ENGINEERING (backend)
+        CSV rows are iterated; for each transaction:
+          - input_addresses and input_amounts are parsed (ast.literal_eval)
+          - src_ip is resolved via lookup_ip() → state, city, ASN, org, lat, lng
+          - wallet_stats accumulates: tx_count, volume, unique IPs, states, ASNs, locations
+
+Step 4  ML PIPELINE (backend)
+        Feature matrix X = [tx_count, total_volume, unique_ip_count] per wallet
+        StandardScaler normalises X
+        IsolationForest (200 trees, 10% contamination) → anomaly labels + decision scores
+        KMeans (up to 6 clusters) → cluster assignment per wallet
+
+Step 5  RESULT BUILDING (backend)
+        Flagged wallets (label == -1) are scored 60–99% confidence
+        Primary state, ASN, ISP derived via Counter.most_common
+        Mean lat/lng computed across all resolved locations
+        Results sorted descending by confidence_score
+        Written to anomaly_results.json and stats.json
+
+Step 6  DISPLAY (frontend)
+        Workspace fetches /api/v1/anomalies → renders suspect list
+        Home Dashboard fetches /api/v1/stats and /api/v1/anomalies
+        MetricCards shows total_transactions, total_wallets, anomalies_detected
+        Map renders per-wallet threat dots (red = ≥85% confidence, amber = below)
+        Threat ticker scrolls detected wallets
+        Clicking a dot or alert row cross-highlights map and list
+
+Step 7  REPORTING
+        Analyst clicks "📄 Generate PDF" on any suspect
+        Frontend opens GET /api/v1/report/{wallet_address} in a new tab
+        Backend renders HTML dossier → WeasyPrint → streams PDF download
+```
+
+---
+
+## 6. Service 1 — Streamlit Data Generator
+
+**File:** `chainwatch_backend/generator_app.py`  
+**URL:** `http://localhost:8501`
+
+### Purpose
+
+Produces a synthetic CSV ledger that mimics Bitcoin-style network traffic. It seeds a statistically realistic dataset with normal background traffic plus a planted anomaly cluster, giving the ML pipeline a meaningful signal to find.
+
+### Key Design Decisions
+
+- **Wallet pool of 150 addresses** — generated once via `fake.sha256()[:34]`; reused across rows to create realistic repeat-actor patterns.
+- **3 threat wallets** — randomly sampled from the pool; these are the planted anomaly actors.
+- **5% anomaly rate** — each row has a 5% chance of being flagged as an anomalous record. Anomalous rows use the 3 threat wallets, IPs sampled from the target state's ranges, and a `multiplier` of 10–50× normal volume.
+- **Normal rows** use a random state, Pareto-like low volume (0.01–1.5 BTC multiplier), and 1–2 input wallets.
+- **`dst_port: 8333`** — Bitcoin's default P2P port, used for all destination connections.
+- **`@st.cache_data`** — both `load_ip_reference()` and `generate_data()` are cached; re-running with the same target state returns instantly from cache.
+
+### Output Schema (`ledger.csv`)
+
+| Column | Type | Description |
+|---|---|---|
+| `timestamp` | ISO 8601 string | Random datetime within the past ~7 days |
+| `src_ip` | IPv4 string | Source IP sampled from state IP ranges |
+| `dst_ip` | IPv4 string | Destination IP (any range) |
+| `src_port` | int | Random ephemeral port (1024–65535) |
+| `dst_port` | int | Always `8333` (Bitcoin P2P) |
+| `txid` | hex string | UUID4 hex — unique transaction ID |
+| `input_addresses` | Python list literal | 1–4 wallet addresses as a string |
+| `output_addresses` | Python list literal | 1–2 wallet addresses as a string |
+| `input_amounts` | Python list literal | BTC amounts per input address |
+| `output_amounts` | Python list literal | BTC amounts per output address |
+| `geo_state` | string | State name used as fallback in backend |
+
+---
+
+## 7. Service 2 — FastAPI Core Engine
+
+**File:** `chainwatch_backend/main.py`  
+**URL:** `http://localhost:8000`
+
+### 7.1 IP & ASN Geolocation Subsystem
+
+The backend resolves every `src_ip` to a geographic location and network identity using a layered fallback approach.
+
+#### Layer 1 — MaxMind MMDB (primary)
+
+Two MaxMind binary databases are loaded at startup:
+
+```
+chainwatch_backend/database/GeoIP-City.mmdb   → state, city, lat, lng
+chainwatch_backend/database/GeoIP-ASN.mmdb    → ASN number, organisation name
+```
+
+If these files are absent, the backend logs a warning and falls back to CSV-only mode.
+
+#### Layer 2 — `IP_Address.csv` (India-specific fallback)
+
+A CSV at the project root maps Indian IP ranges to state, city, latitude, and longitude. Loaded once via `@lru_cache(maxsize=1)` into a sorted list of `(start_int, end_int, state, city, lat, lng)` tuples. Binary search (`bisect_right`) finds the matching range in O(log n).
+
+**Required columns (case-insensitive, BOM-stripped):**
+
+| Column | Description |
 |---|---|
-| `tx_count` | Number of transactions attributed to this wallet |
-| `total_volume_btc` | Cumulative BTC moved by this wallet |
-| `unique_ip_count` | Number of distinct source IPs used |
+| `start` | IP range start (dotted-decimal) |
+| `end` | IP range end (dotted-decimal) |
+| `state` | Indian state or UT name |
+| `city` | City name |
+| `lat` | Latitude (float) |
+| `long` | Longitude (float) |
 
-All features are normalized with `StandardScaler` before being fed to the models.
+#### Layer 3 — `dbip-asn-lite-2026-09.csv` (ASN fallback)
 
-### Stage 2 — Isolation Forest (Anomaly Detection)
+No-header CSV with columns `start, end, asn, org`. Same binary-search approach as the location CSV. Used when MaxMind ASN database is absent.
 
-```python
-IsolationForest(n_estimators=200, contamination=0.10, random_state=42)
-```
-
-- Builds 200 random decision trees over the feature space
-- Normal wallets require many splits to isolate (high path length → low anomaly score)
-- Anomalous wallets (extreme `tx_count`, `volume`, or `unique_ip_count`) are isolated in very few splits (short path length → flagged as anomaly)
-- The `contamination=0.10` parameter tells the model to expect ~10% of wallets to be anomalous
-- Raw `decision_function` scores are mapped to a human-readable confidence range of **60% – 99%**
-
-### Stage 3 — K-Means Clustering (Behavioral Grouping)
+#### `lookup_ip(ip: str) → dict`
 
 ```python
-KMeans(n_clusters=min(6, len(wallets)), random_state=42, n_init=10)
+{
+  "state":     str,    # Indian state or "Unknown"
+  "city":      str,    # City or "Unknown"
+  "asn":       str,    # "AS12345" or "N/A"
+  "org":       str,    # ISP/org name or "N/A"
+  "latitude":  float | None,
+  "longitude": float | None
+}
 ```
 
-- Groups flagged wallets into up to **6 behavioral clusters**
-- Each cluster maps to a named threat pattern (see [Threat Classification Model](#threat-classification-model))
-- Helps analysts understand *how* a wallet is suspicious, not just *that* it is
-
-### Stage 4 — GeoIP & ASN Attribution
-
-For each source IP in the ledger:
-
-1. **Primary lookup:** MaxMind `GeoIP-City.mmdb` → Indian state name
-2. **Fallback:** `geo_state` column from the CSV itself
-3. **ASN lookup:** MaxMind `GeoIP-ASN.mmdb` → ASN number + organization name
-
-The most frequent state/ASN/ISP per wallet is stored as its `primary_state`, `asn`, and `isp`.
-
-### Output
-
-Results are persisted to two JSON files that the React dashboard reads:
-
-- `anomaly_results.json` — full list of flagged wallets, sorted by confidence score descending
-- `stats.json` — aggregate counts: `total_transactions`, `total_wallets`, `anomalies_detected`
+Private/reserved IP addresses (`address.is_global == False`) return the default empty result immediately without any lookup.
 
 ---
 
-## API Reference
+### 7.2 ML Pipeline
 
-Base URL: `http://localhost:8000`
+Executed inside `POST /api/v1/ingest` after feature engineering.
 
-### `GET /`
+#### Feature Engineering
+
+Per-wallet aggregate features are built in a single pass over the CSV:
+
+```python
+features = [
+    wallet.tx_count,          # Number of transactions involving this wallet
+    wallet.total_volume,      # Sum of all BTC amounts
+    len(wallet.unique_ips)    # Number of distinct source IPs
+]
+```
+
+These three dimensions capture the core behaviours of interest: frequency, scale, and network dispersion.
+
+#### Stage 1 — Isolation Forest
+
+```python
+IsolationForest(
+    n_estimators=200,      # 200 trees for stable scores on small datasets
+    contamination=0.10,    # Expects ~10% of wallets to be anomalous
+    random_state=42
+)
+```
+
+- Returns `label == -1` for outliers (anomalous wallets)
+- `decision_function()` returns a continuous score; more negative = more anomalous
+- Confidence is mapped linearly from the score range → **60–99%** band
+
+**Confidence formula:**
+
+```python
+conf = 60 + 39 * (hi - iso_score[i]) / score_range
+```
+
+Where `hi` is the highest anomaly score among flagged wallets (least anomalous flagged), and `lo` is the lowest (most anomalous). This ensures the most deviant wallet gets ~99% and the marginal case gets ~60%.
+
+#### Stage 2 — K-Means Clustering
+
+```python
+KMeans(
+    n_clusters=min(6, len(wallets)),
+    random_state=42,
+    n_init=10
+)
+```
+
+Runs on all wallets (not just flagged ones). Each flagged wallet is tagged with its cluster ID and a human-readable name from:
+
+```python
+CLUSTER_NAMES = [
+    "Micro-Transactor Ring",
+    "High-Volume Laundering Node",
+    "Multi-Hop Relay Cluster",
+    "Dormant-then-Active",
+    "Cross-Border Cell",
+    "Retail Node"
+]
+```
+
+The cluster name is assigned by index only; it is a label applied to the K-Means partition — it does not independently classify behaviour.
+
+---
+
+### 7.3 REST API Reference
+
+#### `GET /`
 Health check.
+
+**Response:**
 ```json
 { "status": "ChainWatch Engine Active" }
 ```
 
 ---
 
-### `GET /api/v1/stats`
-Returns aggregate pipeline statistics.
+#### `GET /api/v1/stats`
+Returns the aggregate metrics and all wallet locations from the last ingest run.
 
 **Response:**
 ```json
 {
   "total_transactions": 1000,
-  "total_wallets": 150,
-  "anomalies_detected": 15
+  "total_wallets": 148,
+  "anomalies_detected": 14,
+  "wallet_locations": [
+    {
+      "wallet_address": "abc123...",
+      "primary_state": "Maharashtra",
+      "is_threat": true,
+      "confidence_score": 91.4,
+      "latitude": 19.7515,
+      "longitude": 75.7139
+    }
+  ]
 }
 ```
 
+`wallet_locations` contains **all** wallets (not just flagged), so the frontend can render both threat dots (red/amber) and normal dots (blue).
+
 ---
 
-### `GET /api/v1/anomalies`
-Returns all flagged wallet anomalies, sorted by confidence score.
+#### `GET /api/v1/anomalies`
+Returns the list of flagged wallets sorted by descending confidence score.
 
-**Response:** Array of `AnomalyAlert` objects:
+**Response:** `Array<AnomalyAlert>`
+
 ```json
 [
   {
-    "wallet_address": "538686248209869f83e798641ab5c797e0",
-    "confidence_score": 99.0,
-    "cluster_id": 2,
-    "cluster_name": "Multi-Hop Relay Cluster",
-    "reason": "AI detected 62 rapid TXNs masking 1408.48 BTC across 37 distinct IPs.",
-    "tx_count": 62,
-    "total_volume_btc": 1408.4769,
-    "unique_ip_count": 37,
-    "primary_state": "Manipur",
-    "asn": "AS45609",
-    "isp": "Bharti Airtel"
+    "wallet_address": "1A2b3C...",
+    "confidence_score": 97.3,
+    "cluster_id": 1,
+    "cluster_name": "High-Volume Laundering Node",
+    "reason": "AI detected 42 rapid TXNs masking 1823.40 BTC across 38 distinct IPs.",
+    "tx_count": 42,
+    "total_volume_btc": 1823.4,
+    "unique_ip_count": 38,
+    "primary_state": "Maharashtra",
+    "asn": "AS9829",
+    "isp": "BSNL",
+    "lat": 19.0760,
+    "lng": 72.8777
   }
 ]
 ```
 
 ---
 
-### `POST /api/v1/ingest`
-Accepts a raw CSV ledger file, runs the full ML pipeline, and updates `anomaly_results.json` and `stats.json`.
+#### `POST /api/v1/ingest`
+Accepts a `multipart/form-data` upload with a single field `file` containing the `ledger.csv`.
 
-**Request:** `multipart/form-data` with field `file` (CSV)
+Runs the full ML pipeline and overwrites `anomaly_results.json` and `stats.json`.
 
-**Expected CSV columns:**
-| Column | Type | Description |
-|---|---|---|
-| `timestamp` | ISO datetime | Transaction timestamp |
-| `src_ip` | IPv4 | Source IP address |
-| `dst_ip` | IPv4 | Destination IP address |
-| `src_port` | int | Source port |
-| `dst_port` | int | Destination port (typically 8333) |
-| `txid` | hex string | Transaction ID |
-| `input_addresses` | Python list string | Sender wallet addresses |
-| `output_addresses` | Python list string | Receiver wallet addresses |
-| `input_amounts` | Python list string | BTC amounts per input |
-| `output_amounts` | Python list string | BTC amounts per output |
-| `geo_state` | string | Fallback state if GeoIP fails |
+**Request:** `Content-Type: multipart/form-data`, field name `file`
 
 **Response:**
 ```json
 {
   "message": "Ingestion and ML Analysis Complete",
-  "anomalies_found": 15
+  "anomalies_found": 14
 }
 ```
 
----
-
-### `GET /api/v1/report/{wallet_id}`
-Generates and streams an NTRO-classified PDF intelligence dossier for the specified wallet address.
-
-**Parameters:**
-- `wallet_id` — full wallet address string
-
-**Response:** `application/pdf` — streamed directly to browser
-
-**PDF Contents:**
-- Header: "Government of India | NTRO — CLASSIFIED: THREAT INTELLIGENCE DOSSIER"
-- Target entity (wallet address)
-- AI confidence score
-- Behavioral classification (cluster name)
-- Geographic jurisdiction (primary operating state)
-- ISP / ASN network footprint
-- AI evidence log (reason string)
-- Generation timestamp
-- Official Secrets Act disclaimer
+**Error responses:**
+- `500` if the CSV cannot be parsed or the ML pipeline fails
 
 ---
 
-## Frontend Application
+#### `GET /api/v1/report/{wallet_id}`
+Generates and streams a PDF intelligence dossier for the specified wallet address.
 
-The React frontend has two main routes:
+**Path parameter:** `wallet_id` — full wallet address string
 
-### `/` — Executive Dashboard (`Home.jsx`)
+**Response:** `application/pdf` stream, filename `NTRO_Threat_Report_{wallet_id[:8]}.pdf`
 
-The command-and-control view for senior analysts and executives.
+**Error responses:**
+- `404` — wallet not found in `anomaly_results.json`
+- `500` — PDF generation error
+
+---
+
+### 7.4 Data Models
+
+#### `AnomalyAlert` (Pydantic)
+
+```python
+class AnomalyAlert(BaseModel):
+    wallet_address:    str
+    confidence_score:  float           # 60.0 – 99.0
+    cluster_id:        int             # 0 – 5
+    cluster_name:      str
+    reason:            str             # Human-readable ML rationale
+    tx_count:          int
+    total_volume_btc:  float
+    unique_ip_count:   int
+    primary_state:     Optional[str]   # Most frequent state from Counter
+    asn:               Optional[str]   # e.g. "AS9829"
+    isp:               Optional[str]   # e.g. "BSNL"
+    lat:               Optional[float] # Mean latitude of all resolved IPs
+    lng:               Optional[float] # Mean longitude of all resolved IPs
+```
+
+---
+
+## 8. Service 3 — React Frontend
+
+**Directory:** `chainwatch_frontend/`  
+**URL:** `http://localhost:5173`
+
+### 8.1 Routing
+
+`App.jsx` defines two routes:
+
+| Path | Component | Description |
+|---|---|---|
+| `/` | `Home` | Executive Dashboard |
+| `/workspace` | `Workspace` | Analyst Workspace |
+
+---
+
+### 8.2 Home Dashboard
+
+**File:** `src/Home.jsx`
+
+The primary stakeholder-facing view. It has no state persistence — all data is fetched fresh on mount.
+
+#### Data Fetching
+
+A shared `useAPI(endpoint)` hook wraps `fetch` + `useState` + `useEffect`:
+
+```js
+function useAPI(endpoint) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetch(`${API}${endpoint}`)
+      .then(r => r.json())
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, [endpoint]);
+  return { data, loading };
+}
+```
+
+Two calls are made in parallel on mount: `/stats` and `/anomalies`.
+
+#### Sections (top to bottom)
 
 | Section | Description |
 |---|---|
-| **Top bar** | NTRO branding, system title, `SECURED — FULLY OFFLINE` status badge, "Ingest New Ledger" CTA |
-| **Live Threat Banner** | Red full-width banner triggered on anomaly isolation (double-click the NTRO logo to simulate) |
-| **Hero Section** | Full-width banner with mission statement |
-| **Threat Ticker** | Auto-scrolling horizontal feed of flagged wallets; pauses when a live threat is detected |
-| **Metric Cards** | Transactions Analyzed · Unique Wallets · Threats Isolated |
-| **Regional Threat Map** | Clickable India map; click a state to zoom and filter the alert panel |
-| **Threat Watchlist** | File-card style alert list; click to select and highlight |
-| **Footer** | About, Quick Links, NTRO contact details, copyright |
+| **Accessibility bar** | Skip-to-content link; A- / A / A+ zoom controls |
+| **Topbar** | GOI emblem, NTRO brand, system title, offline badge, "Ingest New Ledger" CTA |
+| **Live threat banner** | Conditionally rendered red alert strip (triggered by double-clicking the brand area during a demo, populates from `alerts[0]`) |
+| **Hero section** | Full-width image with title and subtitle overlay |
+| **Threat ticker** | Infinite horizontally-scrolling strip of alert cards; pauses when `liveThreatData` is set |
+| **MetricCards** | Three KPI cards: transactions analysed, unique wallets, threats isolated |
+| **Regional Threat Map** | Interactive SVG map of India; click a state to filter; threat dots coloured by confidence |
+| **Threat Watchlist** | `AlertTable` filtered by selected state or showing all |
+| **Footer** | About, Quick Links, Nodal Agency address columns |
 
-### `/workspace` — Analyst Workspace (`Workspace.jsx`)
+#### State Interactions
 
-The hands-on analyst interface for ingesting and investigating data.
+- Clicking a state on the map → `setSelectedState(stateName)` → filters both the alert table and the map dots
+- Clicking a wallet in the alert table → `handleAlertSelect(wallet_address)` → sets `highlightedWallet` and auto-pans the map to the wallet's state
+- Clicking a wallet dot on the map → same cross-highlight behaviour
+- Clicking anywhere outside the map (and not on the alert panel) → clears `selectedState`
 
-| Pane | Description |
+---
+
+### 8.3 Analyst Workspace
+
+**File:** `src/Workspace.jsx`
+
+The operational interface for analysts running the ML pipeline.
+
+#### Layout (3-pane)
+
+```
+┌──────────────┬──────────────────────────┬──────────────────┐
+│  LEFT PANE   │      CENTER PANE         │   RIGHT PANE     │
+│              │                          │                  │
+│  1. DATA     │  2. GEOSPATIAL           │  3. REGIONAL     │
+│  INGESTION   │     ISOLATION MAP        │     SUSPECTS     │
+│              │                          │                  │
+│  File picker │  Interactive India map   │  Per-suspect     │
+│  Upload btn  │  (same as Home map)      │  detail cards    │
+│              │                          │  + PDF button    │
+│              ├──────────────────────────┤                  │
+│              │  ENGINE LOGS terminal    │                  │
+└──────────────┴──────────────────────────┴──────────────────┘
+```
+
+#### Upload Flow
+
+1. Analyst selects a CSV via the hidden `<input type="file">`.
+2. Clicks "RUN AI PIPELINE".
+3. Frontend pushes a series of simulated log messages to the terminal with staggered `setTimeout` calls (1s, 2.5s, 4s, 5.5s intervals) to visualise pipeline stages.
+4. A real `FormData` POST to `/api/v1/ingest` runs in parallel with the log simulation.
+5. At t+7s, the real response is consumed — if success, `fetchAlerts()` repopulates the suspects panel; if error, a red error line is appended to the terminal.
+
+#### Log Line Styling
+
+| Prefix | CSS class | Colour |
+|---|---|---|
+| `[ERROR]` | `log-err` | Red |
+| `[SUCCESS]` | `log-succ` | Green |
+| Everything else | `log-info` | Muted grey |
+
+#### PDF Generation
+
+The "📄 Generate PDF" button opens `GET /api/v1/report/{wallet_address}` in a new browser tab, which triggers a PDF download directly from the backend.
+
+---
+
+### 8.4 Component Reference
+
+#### `MetricCards`
+
+**Props:** `{ stats: object | null }`
+
+Renders three flat metric cards. While `stats` is null, shows "Loading metrics…". Each card reads:
+- `stats.total_transactions` — formatted with `toLocaleString()`
+- `stats.total_wallets`
+- `stats.anomalies_detected` — highlighted in red
+
+---
+
+#### `AlertTable`
+
+**Props:** `{ alerts, loading, selectedWallet, onSelectWallet }`
+
+Flat list of threat records. Each row shows:
+- File number (1-indexed rank)
+- Confidence score
+- Full wallet address
+- Origin state, ISP/ASN, behavioural classification
+
+Selected wallet row gets the `selected` CSS class. Clicking any row calls `onSelectWallet(wallet_address)`.
+
+---
+
+#### `GraphView`
+
+**Props:** `{ data, loading, highlightNode }`
+
+Wraps `react-force-graph-2d`. Not currently wired to any page route — available for integration.
+
+**Node types and colours:**
+
+| Type | Normal colour | Flagged colour | Meaning |
+|---|---|---|---|
+| `wallet` | `#138808` (GOI green) | `#FF9933` (saffron) | Bitcoin wallet address |
+| `ip` | `#003366` (GOI blue) | `#cc0000` (red) | Source IP address |
+| `transaction` | `#6b7280` (grey) | `#9ca3af` (light grey) | Transaction node |
+
+**Highlight behaviour:** When `highlightNode` is set, all non-adjacent nodes fade to `rgba(200,200,200,0.2)` and links involving non-highlighted nodes fade to near-transparent. The camera animates (`centerAt` + `zoom(4)`) to the highlighted node.
+
+**Link types and colours:**
+
+| Link type | Colour |
 |---|---|
-| **1. Data Ingestion** (left) | File picker + "RUN AI PIPELINE" button; shows file name on selection |
-| **2. Geospatial Isolation** (center top) | Interactive map; click state to filter; top anomaly states overlay |
-| **Engine Logs** (center bottom) | Terminal-style log stream with color-coded `[ENGINE]`, `[AI]`, `[SUCCESS]`, `[ERROR]` entries |
-| **3. Regional Suspects** (right) | Filtered list of flagged wallets for selected state; one-click PDF generation per suspect |
-
-### Component Reference
-
-| Component | File | Description |
-|---|---|---|
-| `MetricCards` | `components/MetricCards.jsx` | Three KPI stat cards (transactions, wallets, threats) |
-| `AlertTable` | `components/AlertTable.jsx` | Scrollable threat file list with selection state |
-| `GraphView` | `components/GraphView.jsx` | Force-directed graph: IP → TX → Wallet relationships |
-| `ChartsView` | `components/ChartsView.jsx` | Donut chart (risk distribution) + bar chart (cluster breakdown) |
-
-### GraphView Node & Link Types
-
-**Node Types:**
-| Type | Normal Color | Flagged Color |
-|---|---|---|
-| `ip` | Navy `#003366` | Red `#cc0000` |
-| `transaction` | Gray `#6b7280` | Light Gray `#9ca3af` |
-| `wallet` | Green `#138808` | Saffron `#FF9933` |
-
-**Link Types:**
-| Type | Color | Meaning |
-|---|---|---|
-| `BROADCASTED` | Blue (0.3 opacity) | IP node broadcast a transaction |
-| `SENT_TO_NODE` | Light Blue (0.15) | Transaction sent to a node |
-| `INPUT_TO_TX` | Teal (0.35) | Wallet input to transaction |
-| `OUTPUT_TO_WALLET` | Purple (0.35) | Transaction output to wallet |
-
-### Map Utilities (`mapUtils.js`)
-
-- `STATE_COORDS` — lookup table of `[longitude, latitude]` center coordinates for 14 key Indian states/UTs
-- `generateStateDots(stateName, count, geoJson)` — generates `count` random points geometrically inside the state's GeoJSON polygon using ray-casting, for scatter-plot visualization
+| `BROADCASTED` | Blue 30% opacity |
+| `SENT_TO_NODE` | Blue 15% opacity |
+| `INPUT_TO_TX` | Teal 35% opacity |
+| `OUTPUT_TO_WALLET` | Purple 35% opacity |
 
 ---
 
-## Data Generator
+#### `ChartsView`
 
-The Streamlit app (`generator_app.py`) provides an interactive UI for generating realistic synthetic Bitcoin ledger data.
+**Props:** `{ stats, clusters }`
 
-### How it Works
+Two side-by-side charts using Recharts. Not currently wired to any page route — available for integration.
 
-1. **State selection** — Pick a target state from the dropdown to plant a high-confidence threat anomaly in that jurisdiction
-2. **Data generation** — Creates 1,000 transactions with the following distribution:
-   - **~95% normal traffic** — Pareto-distributed retail transactions, random Indian states, low BTC volumes (0.01–1.5× multiplier)
-  - **~5% planted anomalies** — Concentrated in the target state, using 3 specific "threat wallets", high BTC volumes (10–50× multiplier), and reference-backed IPs
-3. **Download** — Export as `ledger.csv` for upload into the ChainWatch Workspace
+- **Pie chart** — "Risk Distribution": normal wallets (GOI blue `#003366`) vs flagged wallets (saffron `#FF9933`). Donut style (innerRadius 60, outerRadius 80).
+- **Bar chart** — "AI Cluster Threat Assessment": one bar per K-Means cluster, labelled by the first word of the cluster name. All bars in GOI deep blue.
 
-### Running the Generator
-
-```bash
-cd chainwatch_backend
-source venv/bin/activate
-streamlit run generator_app.py
-```
-
-Opens at `http://localhost:8501`
-
-### CSV Schema Generated
-
-```
-timestamp, src_ip, dst_ip, src_port, dst_port, txid,
-input_addresses, output_addresses, input_amounts, output_amounts, geo_state
-```
+Both charts use a custom tooltip showing the full cluster name and count.
 
 ---
 
-## Getting Started
+### 8.5 Map Utilities
 
-### Prerequisites
+**File:** `src/mapUtils.js`
 
-- Python 3.10+
-- Node.js 18+ and npm
-- Docker Desktop (for Neo4j, optional)
-- MaxMind GeoIP databases (`.mmdb` files) — place in `chainwatch_backend/database/`
+#### `getStateCenter(stateName, geoJson) → [lng, lat]`
 
-### Backend Setup
+Computes the bounding-box centroid of a state by collecting all coordinate pairs from its GeoJSON geometry, then averaging `(minLng + maxLng) / 2` and `(minLat + maxLat) / 2`. Falls back to `STATE_COORDS[stateName]` (a hardcoded lookup for 14 key states), then `[80, 22]` (geographic centre of India).
 
-```bash
-# Navigate to backend directory
-cd chainwatch_backend
+Used by the map's `ZoomableGroup.center` prop when a state is selected, animating a smooth zoom-in.
 
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate        # macOS/Linux
-# venv\Scripts\activate         # Windows
+#### `getWalletDots(wallets, geoJson, highlightedWallet) → Array<dot>`
 
-# Install dependencies
-pip install fastapi uvicorn pandas numpy scikit-learn maxminddb weasyprint pydantic
+Places each wallet as a dot at a random point **guaranteed to lie within the state's polygon** (using a point-in-polygon ray-casting check, up to 10,000 attempts per wallet).
 
-# Start the API server
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+Uses a deterministic LCG PRNG (`randomState * 1664525 + 1013904223 mod 2^32`) so dot positions are stable across re-renders for the same data order.
+
+**Dot object:**
+
+```js
+{
+  id:          wallet_address,
+  lng:         float,
+  lat:         float,
+  wallet:      wallet_address,
+  state:       stateName,
+  confidence:  float,     // 0–100
+  highlighted: boolean,
+  color:       string     // '#e86a6a' (≥85%), '#e9a24f' (<85% threat), '#4f8fc9' (normal)
+}
 ```
 
-The API will be live at `http://localhost:8000`.  
-Interactive docs: `http://localhost:8000/docs`
+#### `generateStateDots(stateName, count, geoJson)` / `generateAllStateDots(geoJson, countPerState)`
 
-> **Note:** If the MaxMind files are unavailable, the engine uses the root-level reference CSVs when present, then falls back to the ledger's `geo_state` column. Missing reference matches remain `Unknown` or `N/A`.
+Helper functions for placing arbitrary dots within state boundaries, used for decorative background dots if needed.
 
-When the root-level `IP_Address.csv` and `dbip-asn-lite-2026-09.csv` files are present, they provide offline fallback enrichment before the ledger's `geo_state` value. The location CSV supplies state and coordinates; the ASN CSV supplies ASN and organization. MaxMind data remains preferred when the `.mmdb` files are available.
+#### `pointInGeometry(point, geometry)`
 
-### Frontend Setup
-
-```bash
-# Navigate to frontend directory
-cd chainwatch_frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-Opens automatically at `http://localhost:5173`.
-
-### Data Generator Setup
-
-```bash
-# From the backend directory with venv active
-pip install streamlit faker
-
-streamlit run generator_app.py
-```
-
-Opens at `http://localhost:8501`.
-
-### Neo4j (Optional)
-
-```bash
-# From the project root
-docker-compose up -d
-```
-
-- Neo4j Browser: `http://localhost:7474`
-- Bolt connection: `bolt://localhost:7687`
-- Credentials: `neo4j` / `hackathon2026`
+Ray-casting algorithm supporting both `Polygon` and `MultiPolygon` GeoJSON geometries. Used by `getWalletDots` to validate candidate dot positions.
 
 ---
 
-## Workflow Guide
+## 9. Persisted Data Files
 
-This is the end-to-end analyst workflow:
+These JSON files act as the persistence layer between the backend ML pipeline and the frontend. They are plain files on disk — no database involved in the primary read/write path.
 
-```
-Step 1  ─▶  Open the Streamlit Generator (localhost:8501)
-            Select a target state index (e.g. 21 = Maharashtra)
-            Click "Generate 1,000 Transactions"
-            Download ledger.csv
+### `chainwatch_backend/anomaly_results.json`
 
-Step 2  ─▶  Open the Analyst Workspace (localhost:5173/workspace)
-            Click "Select CSV Ledger" → choose ledger.csv
-            Click "RUN AI PIPELINE"
-            Watch the engine logs stream in real time:
-              [ENGINE] Parsing CSV and extracting network graphs...
-              [ENGINE] Resolving GeoIPs and ASN footprints...
-              [AI] Running Isolation Forest across 10,000 vectors...
-              [AI] Executing K-Means behavioral clustering...
-              [SUCCESS] Analysis complete. Found N threats.
+Written by `POST /api/v1/ingest`. Array of `AnomalyAlert` objects (see §7.4), sorted by `confidence_score` descending.
 
-Step 3  ─▶  Review Regional Suspects (right pane)
-            Click a state on the map to filter by jurisdiction
-            Review flagged wallets: volume, ISP, confidence score
-            Click "📄 Generate PDF" to produce an NTRO dossier
+### `chainwatch_backend/stats.json`
 
-Step 4  ─▶  Navigate to Executive Dashboard (localhost:5173)
-            Review live threat ticker and metric cards
-            Click any Indian state on the map to filter the Threat Watchlist
-            The Threat Watchlist shows all flagged wallets for that state
+```json
+{
+  "total_transactions": 1000,
+  "total_wallets": 148,
+  "anomalies_detected": 14,
+  "wallet_locations": [ ... ]
+}
 ```
 
----
+`wallet_locations` contains every wallet seen in the ingested ledger (not just flagged ones), with `is_threat: true/false` so the frontend can render both threat and normal dots on the map.
 
-## Threat Classification Model
+### `chainwatch_backend/NTRO_Report_*.pdf`
 
-When K-Means clustering groups the anomalous wallets, each cluster is assigned a named threat pattern:
-
-| Cluster ID | Name | Description |
-|---|---|---|
-| 0 | **Micro-Transactor Ring** | Many small transactions to avoid detection thresholds |
-| 1 | **High-Volume Laundering Node** | Extremely large BTC volumes moved through a single wallet |
-| 2 | **Multi-Hop Relay Cluster** | Transactions routed through multiple intermediate wallets ("peeling chains") |
-| 3 | **Dormant-then-Active** | Long periods of inactivity followed by sudden burst activity |
-| 4 | **Cross-Border Cell** | Activity spanning multiple geographic jurisdictions and ISPs |
-| 5 | **Retail Node** | Baseline normal-adjacent behavior; lowest risk cluster |
+Temporary PDF files generated by `GET /api/v1/report/{wallet_id}`. Named `NTRO_Report_{wallet_id[:8]}.pdf`. Not cleaned up automatically between runs.
 
 ---
 
-## PDF Intelligence Reports
+## 10. Infrastructure — Docker & Neo4j
 
-Each report is generated dynamically by the FastAPI backend using **WeasyPrint** (HTML-to-PDF renderer) and streamed to the browser.
-
-**Report Sections:**
-1. **Header** — "Government of India | NTRO" with tricolor border
-2. **Date Generated** — Timestamp of report creation
-3. **Target Entity** — Full wallet address
-4. **AI Confidence Score** — Percentage displayed in red
-5. **Behavioral Classification** — K-Means cluster name
-6. **Geographical & Network Footprint** — Primary operating state + ISP/ASN
-7. **AI Evidence Log** — Natural language description (e.g., *"AI detected 62 rapid TXNs masking 1408.48 BTC across 37 distinct IPs."*)
-8. **Footer** — "Generated by ChainWatch Core Engine. Document is subject to Official Secrets Act."
-
-**Sample trigger:** `GET http://localhost:8000/api/v1/report/538686248209869f83e798641ab5c797e0`
-
----
-
-## Docker & Infrastructure
-
-The `docker-compose.yml` provisions a Neo4j graph database for future transaction graph storage and traversal:
+**File:** `docker-compose.yml`
 
 ```yaml
 services:
   neo4j:
     image: neo4j:5.12.0
     ports:
-      - "7474:7474"   # Browser UI
+      - "7474:7474"   # Neo4j Browser UI
       - "7687:7687"   # Bolt protocol
     environment:
       - NEO4J_AUTH=neo4j/hackathon2026
@@ -633,92 +771,229 @@ services:
       - ./neo4j_data:/data
 ```
 
-**Why Neo4j over SQL for blockchain analysis?**
+Neo4j is included for graph-based wallet relationship storage (multi-hop transaction chain traversal). It is **not yet wired** into the current FastAPI or frontend code — the `GraphView` component and `ChartsView` component are built and ready but not connected to a live data source.
 
-Tracing money through a "peeling chain" (e.g., 50 wallet hops) requires expensive recursive `JOIN` operations in SQL that can take minutes and crash servers. Neo4j stores relationships natively as first-class citizens. A 10-hop traversal query takes milliseconds in Cypher vs. minutes in SQL.
+**Neo4j credentials:**
+- Username: `neo4j`
+- Password: `hackathon2026`
+- Browser: `http://localhost:7474`
+- Bolt: `bolt://localhost:7687`
 
----
-
-## Sample Data Output
-
-Sample from `anomaly_results.json` after a typical pipeline run:
-
-```json
-[
-  {
-    "wallet_address": "538686248209869f83e798641ab5c797e0",
-    "confidence_score": 99.0,
-    "cluster_id": 2,
-    "cluster_name": "Multi-Hop Relay Cluster",
-    "reason": "AI detected 62 rapid TXNs masking 1408.48 BTC across 37 distinct IPs.",
-    "tx_count": 62,
-    "total_volume_btc": 1408.4769,
-    "unique_ip_count": 37,
-    "primary_state": "Manipur",
-    "asn": "N/A",
-    "isp": "N/A"
-  },
-  {
-    "wallet_address": "1938e412ac1f881adc34e7e8cca6ca6e33",
-    "confidence_score": 96.9,
-    "cluster_id": 2,
-    "cluster_name": "Multi-Hop Relay Cluster",
-    "reason": "AI detected 66 rapid TXNs masking 1639.63 BTC across 32 distinct IPs.",
-    "tx_count": 66,
-    "total_volume_btc": 1639.63,
-    "unique_ip_count": 32,
-    "primary_state": "Manipur",
-    "asn": "N/A",
-    "isp": "N/A"
-  }
-]
-```
-
-`stats.json` after the same run:
-
-```json
-{
-  "total_transactions": 1000,
-  "total_wallets": 150,
-  "anomalies_detected": 15
-}
+Start Neo4j independently with:
+```bash
+docker compose up -d
 ```
 
 ---
 
-## Known Limitations & Future Roadmap
+## 11. Setup & Installation
 
-### Current Limitations
+### Prerequisites
 
-- **Offline GeoIP accuracy** — MaxMind `.mmdb` files must be sourced and placed manually. Without them, state attribution falls back to the CSV's `geo_state` column, and ISP/ASN fields show `N/A`.
-- **No real-time ingestion** — The pipeline is batch-only. Data must be manually uploaded per session; results do not persist across browser refreshes (served from static JSON files).
-- **Neo4j not yet wired to frontend** — The graph database is provisioned via Docker but the FastAPI `/graph` endpoint and `GraphView` component are not yet connected in the current build.
-- **No authentication** — The API has CORS set to `allow_origins=["*"]`; not suitable for production deployment without auth middleware.
-- **Synthetic data only** — No real Bitcoin ledger data is processed. The generator simulates realistic but entirely fictional transactions.
+- Python 3.10+
+- Node.js 20+
+- Docker Desktop (for Neo4j, optional)
+- fish shell (Start.sh uses `fish -c "source venv/bin/activate.fish; ..."`)
 
-### Roadmap
+### Backend
 
-- [ ] Real-time WebSocket ingestion for live Bitcoin mempool monitoring
-- [ ] Neo4j integration — persist transaction graphs; expose `/api/v1/graph` for `GraphView`
-- [ ] Advanced filtering in the dashboard (date ranges, BTC volume thresholds, cluster filters)
-- [ ] Role-based access control (RBAC) with JWT authentication
-- [ ] Dark mode theme
-- [ ] Multi-language support (Hindi + regional languages)
-- [ ] Alert export (bulk CSV / PDF batch download)
-- [ ] Keyboard accessibility and WCAG 2.1 AA compliance audit
-- [ ] Automated test suite (pytest for backend, Vitest for frontend)
-- [ ] Deployment packaging (Dockerfile for FastAPI backend)
+```bash
+cd chainwatch_backend
+
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate.fish   # fish shell
+# OR: source venv/bin/activate  # bash/zsh
+
+# Install dependencies
+pip install fastapi uvicorn[standard] pandas numpy scikit-learn \
+            maxminddb weasyprint streamlit faker
+```
+
+#### MaxMind Databases (optional but recommended)
+
+Place your MaxMind binary databases at:
+```
+chainwatch_backend/database/GeoIP-City.mmdb
+chainwatch_backend/database/GeoIP-ASN.mmdb
+```
+
+If absent, the backend falls back to CSV-based lookups. The fallback covers Indian IPs well via `IP_Address.csv`.
+
+### Frontend
+
+```bash
+cd chainwatch_frontend
+npm install
+```
 
 ---
 
-<div align="center">
+## 12. Running the Project
 
-**ChainWatch Core Engine** · Built for NTRO · Government of India
+### Option A — All-in-one script (recommended)
 
-*Block-III, Old JNU Campus, New Delhi — 110067*  
-`cyber-intel@ntro.gov.in`
+From the project root:
 
-© 2026 National Technical Research Organisation, Government of India. All rights reserved.  
-*This document is subject to the Official Secrets Act.*
+```bash
+./Start.sh
+```
 
-</div>
+This launches all three services in parallel as background jobs:
+
+| # | Service | URL | Log file |
+|---|---|---|---|
+| 1 | FastAPI backend | `http://localhost:8000` | `logs/backend.log` |
+| 2 | Streamlit generator | `http://localhost:8501` | `logs/generator.log` |
+| 3 | Vite frontend | `http://localhost:5173` | `logs/frontend.log` |
+
+PIDs are written to `.chainwatch_pids` for clean teardown.
+
+Monitor all logs live:
+```bash
+tail -f logs/*.log
+```
+
+### Option B — Manual (each service in a separate terminal)
+
+**Terminal 1 — Backend:**
+```bash
+cd chainwatch_backend
+source venv/bin/activate.fish
+uvicorn main:app --reload
+```
+
+**Terminal 2 — Generator:**
+```bash
+cd chainwatch_backend
+source venv/bin/activate.fish
+streamlit run generator_app.py
+```
+
+**Terminal 3 — Frontend:**
+```bash
+cd chainwatch_frontend
+npm run dev
+```
+
+### Option C — Neo4j (optional)
+
+```bash
+docker compose up -d
+```
+
+---
+
+## 13. Stopping the Project
+
+```bash
+./Kill.sh
+```
+
+`Kill.sh` uses a two-strategy approach:
+
+1. **PID file strategy** — reads `.chainwatch_pids`, sends `SIGTERM` to the entire process group of each recorded PID (catches uvicorn's reload subprocess and Vite's child node process). Escalates to `SIGKILL` after 1 second if the process is still alive.
+
+2. **Pattern fallback** — runs `pkill -f` against `uvicorn main:app`, `streamlit run generator_app.py`, and `vite` to catch any processes that escaped their group.
+
+---
+
+## 14. Configuration Reference
+
+All configuration is currently hardcoded. Key values to change for a new deployment:
+
+| Location | Variable | Default | Description |
+|---|---|---|---|
+| `main.py` | `CITY_DB` | `database/GeoIP-City.mmdb` | MaxMind city database path |
+| `main.py` | `ASN_DB` | `database/GeoIP-ASN.mmdb` | MaxMind ASN database path |
+| `main.py` | `LOCATION_CSV` | `../IP_Address.csv` | India IP range CSV |
+| `main.py` | `ASN_CSV` | `../dbip-asn-lite-2026-09.csv` | DB-IP ASN CSV |
+| `main.py` | `contamination=0.10` | `0.10` | Expected anomaly fraction for Isolation Forest |
+| `main.py` | `n_clusters=min(6, ...)` | `6` | Maximum K-Means clusters |
+| `Home.jsx` | `API` | `http://localhost:8000/api/v1` | Backend base URL |
+| `Workspace.jsx` | `API` | `http://localhost:8000/api/v1` | Backend base URL |
+| `docker-compose.yml` | `NEO4J_AUTH` | `neo4j/hackathon2026` | Neo4j credentials |
+
+---
+
+## 15. Threat Classification Model
+
+### Isolation Forest — How it works
+
+An Isolation Forest builds an ensemble of random trees. Anomalies are points that require fewer splits to isolate — they land in short branches. The `decision_function` score is negative for anomalies; the more negative, the more isolated (anomalous) the wallet.
+
+### Why these three features?
+
+| Feature | What it detects |
+|---|---|
+| `tx_count` | Wallets with unusually high transaction frequency (rapid cycling) |
+| `total_volume_btc` | Wallets moving disproportionately large amounts |
+| `unique_ip_count` | Wallets operating from many different IPs (network dispersion, potential multi-hop relay) |
+
+A structuring attack (breaking large amounts into many small transactions) would show high `tx_count` with moderate `total_volume`. A single large transfer would show low `tx_count` with high `total_volume`. Multi-hop relay nodes show high `unique_ip_count`. The combination makes the feature space non-trivial to game simultaneously.
+
+### Cluster Names — Interpretation Guide
+
+| Cluster | Typical profile |
+|---|---|
+| Micro-Transactor Ring | Many small-volume transactions across a tight wallet group |
+| High-Volume Laundering Node | Few wallets, very high total BTC, concentrated IPs |
+| Multi-Hop Relay Cluster | High unique IP count, moderate volume — acts as a pass-through |
+| Dormant-then-Active | Low tx_count but unusually high single-burst volume |
+| Cross-Border Cell | High IP diversity spanning multiple states |
+| Retail Node | Normal baseline — mis-flagged by the 10% contamination parameter |
+
+> Note: cluster-to-name assignment is by K-Means partition index, not by semantic classification. Treat cluster names as indicative labels, not definitive behavioural verdicts.
+
+---
+
+## 16. PDF Dossier Generation
+
+`GET /api/v1/report/{wallet_id}` generates a single-page A4 PDF styled as an NTRO intelligence record.
+
+**Sections in the dossier:**
+
+| Section | Contents |
+|---|---|
+| Masthead | GOI / NTRO header with "RESTRICTED — THREAT INTELLIGENCE" classification banner |
+| 01 / Subject Identification | Wallet address, behavioural classification, confidence score |
+| 02 / Network and Geographic Footprint | Primary state, ISP/org, ASN number, record reference (`CW-{wallet[:12].upper()}`) |
+| 03 / Analytical Evidence | Transaction count, total BTC volume, unique IP count, detection engine label, AI-generated reason text |
+| Handling notice | Legal disclaimer clarifying the record is synthetic and not a criminal finding |
+
+**Implementation:** WeasyPrint renders an in-memory HTML string to PDF. The PDF is saved to disk at `chainwatch_backend/NTRO_Report_{wallet_id[:8]}.pdf` and then streamed as a `FileResponse`.
+
+All wallet data is HTML-escaped via `html.escape()` before insertion into the template to prevent injection in the rendered PDF.
+
+---
+
+## 17. Security & Privacy Notes
+
+- **Fully offline** — no data leaves the local machine. The backend makes no outbound HTTP calls; all geolocation and ASN resolution uses local files.
+- **CORS is wide open** (`allow_origins=["*"]`) — appropriate for a local development/demo setup only. Restrict to the frontend origin before any deployment.
+- **No authentication** — all API endpoints are unauthenticated. Add an API key or session layer before exposing beyond localhost.
+- **Synthetic data only** — the generator produces entirely fake wallet addresses, transaction IDs, and IP addresses. No real financial or personal data is processed in normal operation.
+- **PDF HTML escaping** — all wallet fields are passed through `html.escape()` before being embedded in the PDF template.
+- **Neo4j password** is stored in plain text in `docker-compose.yml`. Rotate before any shared or networked deployment.
+
+---
+
+## 18. Known Limitations & Future Work
+
+| Item | Status | Notes |
+|---|---|---|
+| Neo4j graph integration | Not wired | `GraphView` and `ChartsView` components are complete; need a `/api/v1/graph/{wallet}` endpoint and ingestion step that writes to Neo4j |
+| Real transaction data | Not supported | Would require a Bitcoin node or block explorer API integration |
+| Authentication layer | Missing | Add JWT or session auth to all API endpoints |
+| Persistent storage | JSON files only | Replace with a proper database (PostgreSQL or Neo4j) for multi-session history |
+| Multi-file ingestion | Not supported | Currently each ingest overwrites previous results |
+| PDF cleanup | Not implemented | Generated PDFs accumulate on disk; add a cleanup task |
+| Streamlit ↔ Workspace integration | Manual step | Analyst must download CSV from Streamlit and manually upload in Workspace; a direct pipe would improve UX |
+| `ChartsView` integration | Unused | Component exists but is not rendered on any current route |
+| `GraphView` integration | Unused | Component exists but is not rendered on any current route |
+| CORS restriction | Wide open | Restrict `allow_origins` to `["http://localhost:5173"]` for hardened local use |
+| Contamination tuning | Hardcoded at 0.10 | Should be configurable or auto-tuned based on dataset size |
+
+---
+
+*ChainWatch — NTRO Proof of Concept · Cyber Intelligence Division*

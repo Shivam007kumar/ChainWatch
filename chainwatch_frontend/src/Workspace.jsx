@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
+import GraphView from './components/GraphView';
 import INDIA_GEO_JSON from './india.json';
 import { getStateCenter, getWalletDots } from './mapUtils';
 import './index.css';
@@ -13,8 +14,12 @@ export default function Workspace() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState(["[SYSTEM] Workspace initialized. Awaiting ledger ingest..."]);
   const [alerts, setAlerts] = useState([]);
+  const [graphData, setGraphData] = useState(null);
+  const [graphLoading, setGraphLoading] = useState(true);
   const [selectedState, setSelectedState] = useState(null);
   const [hoveredState, setHoveredState] = useState("");
+  const [mapMode, setMapMode] = useState('regional');
+  const [selectedGraphNode, setSelectedGraphNode] = useState(null);
   const mapRef = useRef(null);
   const terminalEndRef = useRef(null);
 
@@ -23,8 +28,13 @@ export default function Workspace() {
   }, [logs]);
 
   useEffect(() => {
+    fetch(`${API}/graph`).then(response => response.json()).then(setGraphData).finally(() => setGraphLoading(false));
+  }, []);
+
+  useEffect(() => {
     const handleOutsideMapClick = (event) => {
       if (mapRef.current && !mapRef.current.contains(event.target)) {
+        if (event.target.closest('.ws-right')) return;
         setSelectedState(null);
       }
     };
@@ -48,6 +58,8 @@ export default function Workspace() {
     const response = await fetch(`${API}/anomalies`);
     const data = await response.json();
     setAlerts(data);
+    const graphResponse = await fetch(`${API}/graph`);
+    setGraphData(await graphResponse.json());
   };
 
   const handleUpload = async () => {
@@ -80,7 +92,30 @@ export default function Workspace() {
   const stateSuspects = selectedState
     ? alerts.filter(alert => alert.primary_state?.toLowerCase() === selectedState.toLowerCase())
     : alerts;
-  const threatDots = getWalletDots(stateSuspects.map(alert => ({ ...alert, is_threat: true })), INDIA_GEO_JSON);
+  const [highlightedWallet, setHighlightedWallet] = useState(null);
+  const threatDots = getWalletDots(stateSuspects.map(alert => ({ ...alert, is_threat: true })), INDIA_GEO_JSON, highlightedWallet);
+
+  const handleAlertSelect = (suspect) => {
+    setHighlightedWallet(suspect.wallet_address);
+    setSelectedGraphNode(`wallet:${suspect.wallet_address}`);
+    if (suspect.primary_state) setSelectedState(suspect.primary_state);
+  };
+
+  const handleGraphNodeSelect = (node) => {
+    setSelectedGraphNode(node.id);
+    if (node.type === 'wallet') {
+      const wallet = node.address || node.id.replace(/^wallet:/, '');
+      setHighlightedWallet(wallet);
+      const suspect = alerts.find(item => item.wallet_address === wallet);
+      if (suspect?.primary_state) setSelectedState(suspect.primary_state);
+    }
+  };
+
+  const resetNeuralMap = () => {
+    setSelectedGraphNode(null);
+    setHighlightedWallet(null);
+    setSelectedState(null);
+  };
   const topStates = Object.entries(alerts.reduce((counts, alert) => {
     const stateName = alert.primary_state || 'Unknown';
     counts[stateName] = (counts[stateName] || 0) + 1;
@@ -119,7 +154,23 @@ export default function Workspace() {
 
         <div className="ws-pane ws-center">
           <div ref={mapRef} className="ws-map-container" style={{ position: "relative" }}>
-            <h3 className="ws-pane-title" style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>2. GEOSPATIAL ISOLATION</h3>
+            <div className="workspace-map-toolbar">
+              <h3 className="ws-pane-title">2. {mapMode === 'regional' ? 'GEOSPATIAL ISOLATION' : 'NEURAL ENTITY MAP'}</h3>
+              <div className="map-card-actions">
+                <div className="map-mode-toggle" role="group" aria-label="Map view">
+                  <button className={mapMode === 'regional' ? 'active' : ''} onClick={() => setMapMode('regional')}>Regional Map</button>
+                  <button className={mapMode === 'neural' ? 'active' : ''} onClick={() => setMapMode('neural')}>Neural Map</button>
+                </div>
+                {mapMode === 'neural' && <button className="clear-btn" onClick={resetNeuralMap}>Reset View</button>}
+                {mapMode === 'regional' && selectedState && <button className="clear-btn" onClick={() => setSelectedState(null)}>Clear Filter</button>}
+              </div>
+            </div>
+            {mapMode === 'neural' ? (
+              <div className="neural-map-shell">
+                <GraphView data={graphData} loading={graphLoading} highlightNode={selectedGraphNode} onNodeSelect={handleGraphNodeSelect} onReset={resetNeuralMap} />
+                <div className="graph-legend"><span><i className="graph-dot ip" /> IP</span><span><i className="graph-dot transaction" /> Transaction</span><span><i className="graph-dot wallet" /> Wallet</span><span><i className="graph-dot flagged" /> Flagged</span></div>
+              </div>
+            ) : <>
             {selectedState && <div className="state-badge">TARGET: {selectedState.toUpperCase()}</div>}
             {hoveredState && <div className="map-tooltip">{hoveredState}</div>}
             {topStates.length > 0 && (
@@ -142,14 +193,15 @@ export default function Workspace() {
                   })}
                 </Geographies>
                 {threatDots.map(dot => (
-                  <Marker key={dot.id} coordinates={[dot.lng, dot.lat]}>
-                    <circle r={selectedState ? 3 : 2.5} fill={dot.color} stroke="#fff" strokeWidth={0.7}>
+                    <Marker key={dot.id} coordinates={[dot.lng, dot.lat]} onClick={(event) => { event.stopPropagation(); handleAlertSelect({ wallet_address: dot.wallet, primary_state: dot.state }); }}>
+                    <circle r={dot.highlighted ? 5 : selectedState ? 3 : 2.5} fill={dot.color} stroke={dot.highlighted ? '#111827' : '#fff'} strokeWidth={dot.highlighted ? 1.5 : 0.7} opacity={dot.highlighted ? 1 : 0.85}>
                       <title>{`${dot.wallet} | ${dot.state} | ${dot.confidence}% confidence`}</title>
                     </circle>
                   </Marker>
                 ))}
               </ZoomableGroup>
             </ComposableMap>
+            </>}
           </div>
           <div className="ws-terminal">
             <h3 className="ws-pane-title" style={{ color: '#94a3b8' }}>ENGINE LOGS</h3>
@@ -170,7 +222,7 @@ export default function Workspace() {
               <div className="ws-empty">No anomalous activity detected.</div>
             ) : (
               stateSuspects.map((suspect, index) => (
-                <div key={index} className="alert-row-flat">
+                <div key={index} className={`alert-row-flat ${highlightedWallet === suspect.wallet_address ? 'selected' : ''}`} onClick={() => handleAlertSelect(suspect)}>
                   <div className="alert-header-flat"><span className="alert-rank-flat">FILE #{index + 1}</span><span className="alert-score-flat">{suspect.confidence_score}%</span></div>
                   <div className="alert-wallet-flat">{suspect.wallet_address}</div>
                   <div className="alert-details-flat"><strong>VOL:</strong> {suspect.total_volume_btc} BTC <br /><strong>ISP:</strong> {suspect.isp} <br /><button className="report-btn" onClick={() => window.open(`${API}/report/${suspect.wallet_address}`, '_blank')}>📄 Generate PDF</button></div>
