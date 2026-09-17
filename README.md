@@ -140,6 +140,7 @@ chainwatch/
         └── components/
             ├── GraphView.jsx          # 2D Force-Directed Neural Map
             ├── AlertTable.jsx         # Risk-badged threat table
+            ├── ChartsView.jsx         # Bar & pie charts for cluster/volume analytics
             └── MetricCards.jsx        # Forensic metrics summary cards
 ```
 
