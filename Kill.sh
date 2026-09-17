@@ -1,21 +1,13 @@
 #!/bin/bash
 #
-# kill.sh — stops all ChainWatch services started by start.sh.
-#
-# Primary strategy: kill the whole process GROUP for each PID recorded by
-# start.sh (start.sh used `set -m`, so each job is its own group leader).
-# This takes down uvicorn's reload subprocess and npm/vite's child node
-# process too, not just the top-level shell.
-#
-# Fallback strategy: pattern-match on the known commands, in case the PID
-# file is missing/stale or something escaped its process group.
+# Kill.sh — stops all ChainWatch services started by Start.sh.
 
 set -uo pipefail
 
-PROJECT_ROOT="/Users/shivamkumar/laptop/chainwatch"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PID_FILE="$PROJECT_ROOT/.chainwatch_pids"
 
-echo "Stopping ChainWatch..."
+echo "Stopping ChainWatch Network System..."
 echo ""
 
 kill_group() {
@@ -25,7 +17,6 @@ kill_group() {
   fi
   if kill -0 "$pid" 2>/dev/null; then
     echo "  Stopping $name (PID $pid)..."
-    # negative PID = kill the whole process group
     kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
     sleep 1
     if kill -0 "$pid" 2>/dev/null; then
@@ -50,10 +41,9 @@ fi
 echo ""
 echo "Sweeping for any leftover matching processes..."
 
-# Fallback pattern-based cleanup, in case anything escaped its group
 pkill -f "uvicorn main:app" 2>/dev/null && echo "  Killed leftover uvicorn process(es)"
 pkill -f "streamlit run generator_app.py" 2>/dev/null && echo "  Killed leftover streamlit process(es)"
 pkill -f "vite" 2>/dev/null && echo "  Killed leftover vite process(es)"
 
 echo ""
-echo "Done."
+echo "ChainWatch shutdown complete."

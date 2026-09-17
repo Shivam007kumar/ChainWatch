@@ -493,3 +493,113 @@ body { font-family: var(--font); background: var(--bg-primary); color: var(--tex
 }
 .top-states-list { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 5px; color: #475569; font-family: var(--mono); font-size: 9px; }
 @keyframes topStatePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* Threat Dot Inspector Overlay */
+.map-dot-inspector {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 320px;
+  max-height: 85%;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #334155;
+  border-left: 4px solid #ef4444;
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 14px 16px;
+  z-index: 100;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  color: #f8fafc;
+  font-size: 11px;
+}
+
+.inspector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.inspector-badge {
+  font-weight: 800;
+  font-size: 10px;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.inspector-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+}
+.inspector-close:hover { color: #ffffff; }
+
+.inspector-wallet {
+  font-family: monospace;
+  font-weight: 700;
+  color: #38bdf8;
+  word-break: break-all;
+  margin-bottom: 10px;
+  font-size: 11px;
+}
+
+.inspector-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+}
+
+.inspector-factors {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 10px;
+}
+
+.inspector-tx-list {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 12px;
+}
+
+.inspector-tx-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed #1e293b;
+  font-size: 10px;
+}
+.inspector-tx-item:last-child { border-bottom: none; }
+
+.inspector-actions {
+  display: flex;
+  gap: 8px;
+}
+.inspector-actions button {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  transition: all 0.2s;
+}
+.inspector-actions button:hover {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}

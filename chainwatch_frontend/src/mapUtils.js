@@ -99,6 +99,7 @@ export function getWalletDots(wallets, geoJson, highlightedWallet = null) {
 
       if (!features.some(feature => pointInGeometry(point, feature.geometry))) return null;
       const confidence = Number(wallet.confidence_score) || 0;
+      const riskScore = Number(wallet.risk_score) || confidence;
       return {
         id: wallet.wallet_address,
         lng: point[0],
@@ -106,8 +107,14 @@ export function getWalletDots(wallets, geoJson, highlightedWallet = null) {
         wallet: wallet.wallet_address,
         state: stateName,
         confidence,
+        riskScore,
+        riskFactors: wallet.risk_factors || [],
+        txCount: wallet.tx_count || 1,
+        volumeBtc: wallet.total_volume_btc || 0.0,
+        transactions: wallet.transactions || [],
+        rawWallet: wallet,
         highlighted: wallet.wallet_address === highlightedWallet,
-        color: wallet.is_threat ? (confidence >= 85 ? '#e86a6a' : '#e9a24f') : '#4f8fc9'
+        color: wallet.is_threat ? (riskScore >= 70 ? '#ef4444' : '#f59e0b') : '#3b82f6'
       };
     });
   }).filter(Boolean);

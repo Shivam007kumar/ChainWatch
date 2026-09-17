@@ -66,10 +66,12 @@ export default function Workspace() {
     if (!file) return;
     setIsProcessing(true);
     setLogs(prev => [...prev, `[USER] Initiating ingest for ${file.name}...`]);
-    setTimeout(() => setLogs(prev => [...prev, "[ENGINE] Parsing CSV and extracting network graphs..."]), 1000);
-    setTimeout(() => setLogs(prev => [...prev, "[ENGINE] Resolving GeoIPs and ASN footprints..."]), 2500);
-    setTimeout(() => setLogs(prev => [...prev, "[AI] Running Isolation Forest across 10,000 vectors..."]), 4000);
-    setTimeout(() => setLogs(prev => [...prev, "[AI] Executing K-Means behavioral clustering..."]), 5500);
+    setTimeout(() => setLogs(prev => [...prev, "[ENGINE] Parsing ledger CSV & extracting transaction vectors..."]), 500);
+    setTimeout(() => setLogs(prev => [...prev, "[GEOIP] Resolving offline MaxMind GeoIP2 City & ASN footprint..."]), 1200);
+    setTimeout(() => setLogs(prev => [...prev, "[CORRELATION] Computing broadcast IP exponential decay scores (tau=8.0s)..."]), 2000);
+    setTimeout(() => setLogs(prev => [...prev, "[FORENSICS] Running Peeling-Chain (depth >= 3) & CoinJoin Mixing detector..."]), 3000);
+    setTimeout(() => setLogs(prev => [...prev, "[GRAPH] Executing decay-based Risk Score Propagation across edges..."]), 4000);
+    setTimeout(() => setLogs(prev => [...prev, "[NEO4J] Executing transactional MERGE writes to Neo4j graph database..."]), 5000);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -77,15 +79,18 @@ export default function Workspace() {
       const response = await fetch(`${API}/ingest`, { method: 'POST', body: formData });
       const result = await response.json();
       setTimeout(() => {
-        setLogs(prev => [...prev, `[SUCCESS] Analysis complete. Found ${result.anomalies_found} threats.`]);
+        setLogs(prev => [
+          ...prev,
+          `[SUCCESS] Analysis complete! Anomalies: ${result.anomalies_found}, Peeling Chains: ${result.peeling_chains_found}, CoinJoin Mixers: ${result.coinjoin_mixers_found}, Propagated Risk Wallets: ${result.propagated_risk_wallets}.`
+        ]);
         fetchAlerts();
         setIsProcessing(false);
-      }, 7000);
+      }, 5500);
     } catch (error) {
       setTimeout(() => {
         setLogs(prev => [...prev, "[ERROR] Connection to Core Engine failed."]);
         setIsProcessing(false);
-      }, 7000);
+      }, 5500);
     }
   };
 
@@ -94,6 +99,24 @@ export default function Workspace() {
     : alerts;
   const [highlightedWallet, setHighlightedWallet] = useState(null);
   const threatDots = getWalletDots(stateSuspects.map(alert => ({ ...alert, is_threat: true })), INDIA_GEO_JSON, highlightedWallet);
+
+  const [selectedDotInspector, setSelectedDotInspector] = useState(null);
+
+  const handleClearWorkspace = async () => {
+    try {
+      setLogs(prev => [...prev, "[SYSTEM] Initiating database & workspace wipe..."]);
+      await fetch(`${API}/clear`, { method: 'POST' });
+      setAlerts([]);
+      setGraphData({ nodes: [], links: [], transaction_count: 0 });
+      setSelectedState(null);
+      setSelectedDotInspector(null);
+      setHighlightedWallet(null);
+      setFile(null);
+      setLogs(prev => [...prev, "[SUCCESS] Database and workspace state wiped clean."]);
+    } catch (err) {
+      setLogs(prev => [...prev, "[ERROR] Failed to wipe workspace database."]);
+    }
+  };
 
   const handleAlertSelect = (suspect) => {
     setHighlightedWallet(suspect.wallet_address);
@@ -142,6 +165,9 @@ export default function Workspace() {
             </label>
             <button className={`ws-btn ${!file || isProcessing ? 'disabled' : ''}`} onClick={handleUpload} disabled={!file || isProcessing}>
               {isProcessing ? "ANALYZING..." : "RUN AI PIPELINE"}
+            </button>
+            <button className="clear-btn" onClick={handleClearWorkspace} style={{ marginTop: '12px', width: '100%', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.1)' }}>
+              🗑️ Wipe Engine Database
             </button>
           </div>
           <div className="ws-instructions">
@@ -193,14 +219,55 @@ export default function Workspace() {
                   })}
                 </Geographies>
                 {threatDots.map(dot => (
-                    <Marker key={dot.id} coordinates={[dot.lng, dot.lat]} onClick={(event) => { event.stopPropagation(); handleAlertSelect({ wallet_address: dot.wallet, primary_state: dot.state }); }}>
-                    <circle r={dot.highlighted ? 5 : selectedState ? 3 : 2.5} fill={dot.color} stroke={dot.highlighted ? '#111827' : '#fff'} strokeWidth={dot.highlighted ? 1.5 : 0.7} opacity={dot.highlighted ? 1 : 0.85}>
-                      <title>{`${dot.wallet} | ${dot.state} | ${dot.confidence}% confidence`}</title>
+                  <Marker key={dot.id} coordinates={[dot.lng, dot.lat]} onClick={(event) => { event.stopPropagation(); setSelectedDotInspector(dot); handleAlertSelect({ wallet_address: dot.wallet, primary_state: dot.state }); }}>
+                    <circle r={dot.highlighted ? 6 : selectedState ? 4 : 3} fill={dot.color} stroke={dot.highlighted ? '#111827' : '#fff'} strokeWidth={dot.highlighted ? 2 : 1} opacity={dot.highlighted ? 1 : 0.9} style={{ cursor: 'pointer' }}>
+                      <title>{`${dot.wallet} | ${dot.state} | Risk Score: ${dot.riskScore}%`}</title>
                     </circle>
                   </Marker>
                 ))}
               </ZoomableGroup>
             </ComposableMap>
+
+            {selectedDotInspector && (
+              <div className="map-dot-inspector" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="inspector-header">
+                  <span className="inspector-badge" style={{ background: selectedDotInspector.riskScore >= 70 ? '#ef4444' : '#f59e0b' }}>
+                    RISK SCORE {selectedDotInspector.riskScore}%
+                  </span>
+                  <button className="inspector-close" onClick={() => setSelectedDotInspector(null)}>✖</button>
+                </div>
+                <div className="inspector-wallet">{selectedDotInspector.wallet}</div>
+                <div className="inspector-grid">
+                  <div><strong>STATE:</strong> {selectedDotInspector.state?.toUpperCase()}</div>
+                  <div><strong>TX COUNT:</strong> {selectedDotInspector.txCount}</div>
+                  <div><strong>VOLUME:</strong> {selectedDotInspector.volumeBtc} BTC</div>
+                </div>
+                {selectedDotInspector.riskFactors?.length > 0 && (
+                  <div className="inspector-factors">
+                    <strong>RISK FACTORS:</strong> {selectedDotInspector.riskFactors.join(', ')}
+                  </div>
+                )}
+                {selectedDotInspector.transactions?.length > 0 && (
+                  <div className="inspector-tx-list">
+                    <strong style={{ color: '#94a3b8', fontSize: '10px' }}>LINKED TRANSACTIONS ({selectedDotInspector.transactions.length}):</strong>
+                    {selectedDotInspector.transactions.map((tx, idx) => (
+                      <div key={idx} className="inspector-tx-item">
+                        <span><code>{tx.txid?.slice(0, 12)}...</code></span>
+                        <span>{tx.type} · {tx.amount} BTC</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="inspector-actions">
+                  <button onClick={() => { setMapMode('neural'); setSelectedGraphNode(`wallet:${selectedDotInspector.wallet}`); }}>
+                    🕸️ View Graph
+                  </button>
+                  <button onClick={() => window.open(`${API}/report/${selectedDotInspector.wallet}`, '_blank')}>
+                    📄 PDF Report
+                  </button>
+                </div>
+              </div>
+            )}
             </>}
           </div>
           <div className="ws-terminal">

@@ -45,6 +45,7 @@ export default function Home() {
   const [selectedState, setSelectedState] = useState(null);
   const [highlightedWallet, setHighlightedWallet] = useState(null);
   const [selectedGraphNode, setSelectedGraphNode] = useState(null);
+  const [selectedDotInspector, setSelectedDotInspector] = useState(null);
   const [mapMode, setMapMode] = useState('regional');
   const [zoom, setZoom] = useState(1);
   const [liveThreatData, setLiveThreatData] = useState(null);
@@ -206,14 +207,55 @@ export default function Home() {
                     })}
                   </Geographies>
                   {threatDots.map(dot => (
-                    <Marker key={dot.id} coordinates={[dot.lng, dot.lat]} onClick={(event) => { event.stopPropagation(); handleAlertSelect(dot.wallet); }}>
-                      <circle r={dot.highlighted ? 5 : selectedState ? 3 : 2.5} fill={dot.color} stroke={dot.highlighted ? '#111827' : '#fff'} strokeWidth={dot.highlighted ? 1.5 : 0.7} opacity={dot.highlighted ? 1 : 0.85}>
-                        <title>{`${dot.wallet} | ${dot.state} | ${dot.confidence}% confidence`}</title>
+                    <Marker key={dot.id} coordinates={[dot.lng, dot.lat]} onClick={(event) => { event.stopPropagation(); setSelectedDotInspector(dot); handleAlertSelect(dot.wallet); }}>
+                      <circle r={dot.highlighted ? 6 : selectedState ? 4 : 3} fill={dot.color} stroke={dot.highlighted ? '#111827' : '#fff'} strokeWidth={dot.highlighted ? 2 : 1} opacity={dot.highlighted ? 1 : 0.9} style={{ cursor: 'pointer' }}>
+                        <title>{`${dot.wallet} | ${dot.state} | Risk Score: ${dot.riskScore}%`}</title>
                       </circle>
                     </Marker>
                   ))}
                 </ZoomableGroup>
               </ComposableMap>
+
+              {selectedDotInspector && (
+                <div className="map-dot-inspector" onMouseDown={(e) => e.stopPropagation()}>
+                  <div className="inspector-header">
+                    <span className="inspector-badge" style={{ background: selectedDotInspector.riskScore >= 70 ? '#ef4444' : '#f59e0b' }}>
+                      RISK SCORE {selectedDotInspector.riskScore}%
+                    </span>
+                    <button className="inspector-close" onClick={() => setSelectedDotInspector(null)}>✖</button>
+                  </div>
+                  <div className="inspector-wallet">{selectedDotInspector.wallet}</div>
+                  <div className="inspector-grid">
+                    <div><strong>STATE:</strong> {selectedDotInspector.state?.toUpperCase()}</div>
+                    <div><strong>TX COUNT:</strong> {selectedDotInspector.txCount}</div>
+                    <div><strong>VOLUME:</strong> {selectedDotInspector.volumeBtc} BTC</div>
+                  </div>
+                  {selectedDotInspector.riskFactors?.length > 0 && (
+                    <div className="inspector-factors">
+                      <strong>RISK FACTORS:</strong> {selectedDotInspector.riskFactors.join(', ')}
+                    </div>
+                  )}
+                  {selectedDotInspector.transactions?.length > 0 && (
+                    <div className="inspector-tx-list">
+                      <strong style={{ color: '#94a3b8', fontSize: '10px' }}>LINKED TRANSACTIONS ({selectedDotInspector.transactions.length}):</strong>
+                      {selectedDotInspector.transactions.map((tx, idx) => (
+                        <div key={idx} className="inspector-tx-item">
+                          <span><code>{tx.txid?.slice(0, 12)}...</code></span>
+                          <span>{tx.type} · {tx.amount} BTC</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="inspector-actions">
+                    <button onClick={() => { setMapMode('neural'); setSelectedGraphNode(`wallet:${selectedDotInspector.wallet}`); }}>
+                      🕸️ View Graph
+                    </button>
+                    <button onClick={() => window.open(`${API}/report/${selectedDotInspector.wallet}`, '_blank')}>
+                      📄 PDF Report
+                    </button>
+                  </div>
+                </div>
+              )}
               </>}
             </div>
           </div>

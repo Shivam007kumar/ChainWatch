@@ -1,5 +1,43 @@
-.gitignore
+# Environment & Secret Files
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.pytest_cache/
+
+# Generated PDF dossiers
+*.pdf
+NTRO_Report_*.pdf
+
+# Process & Log Files
+.chainwatch_pids
+/logs/
+*.log
+
+# Generated JSON state (re-generated dynamically on ingest)
+chainwatch_backend/anomaly_results.json
+chainwatch_backend/graph.json
+chainwatch_backend/stats.json
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr
+*.local
+
+# System & IDE
+.DS_Store
+.idea/
+.vscode/
 /neo4j_data/
 /neo4j/logs/
-/logs
-.DS_Store
+in_shp/

@@ -170,11 +170,18 @@ export default function GraphView({ data, loading, highlightNode, onNodeSelect, 
   const nodeColor = useCallback((node) => {
     const type = node.type || 'wallet';
     const colors = NODE_COLORS[type] || NODE_COLORS.wallet;
-    const baseColor = node.flagged ? colors.flagged : colors.normal;
+
     if (highlightNode && !neighbors.has(node.id)) {
       return 'rgba(200, 200, 200, 0.2)'; // Dim non-neighbors
     }
-    return baseColor;
+
+    if (type === 'wallet') {
+      if (node.flagged) return '#ef4444'; // Flagged Seed Threat
+      if (node.risk_score >= 70) return '#f97316'; // High Propagated Risk
+      if (node.risk_score >= 40) return '#eab308'; // Medium Propagated Risk
+      return colors.normal;
+    }
+    return node.flagged ? colors.flagged : colors.normal;
   }, [highlightNode, neighbors]);
 
   const nodeVal = useCallback((node) => {
@@ -233,7 +240,7 @@ export default function GraphView({ data, loading, highlightNode, onNodeSelect, 
         onNodeHover={setHoveredNode}
         onBackgroundClick={resetGraph}
         nodeLabel={(node) => (investigationMode || node.flagged || node.type === 'ip')
-          ? `[${(node.type || '').toUpperCase()}] ${node.label || node.id}${node.flagged ? '\nFLAGGED' : ''}${node.state ? `\n${node.state}` : ''}`
+          ? `[${(node.type || '').toUpperCase()}] ${node.label || node.id}${node.flagged ? '\nFLAGGED THREAT' : ''}${node.risk_score ? `\nRISK SCORE: ${node.risk_score}%` : ''}`
           : ''}
       />
       {hoveredNode && (
@@ -243,6 +250,10 @@ export default function GraphView({ data, loading, highlightNode, onNodeSelect, 
           {hoveredNode.type === 'wallet' && <>
             <div className="graph-hover-row"><span>Wallet</span><strong>{hoveredNode.address || hoveredNode.id.replace(/^wallet:/, '')}</strong></div>
             <div className="graph-hover-row"><span>State</span><strong>{hoveredNode.state || 'N/A'}</strong></div>
+            <div className="graph-hover-row"><span>Risk Score</span><strong style={{ color: (hoveredNode.risk_score || 0) > 60 ? '#ef4444' : '#10b981' }}>{hoveredNode.risk_score || 0}%</strong></div>
+            {hoveredNode.risk_factors?.length > 0 && (
+              <div className="graph-hover-row"><span>Factors</span><strong style={{ fontSize: '10px', color: '#f87171' }}>{hoveredNode.risk_factors.join(', ')}</strong></div>
+            )}
           </>}
           {hoveredNode.type === 'ip' && <>
             <div className="graph-hover-row"><span>IP</span><strong>{hoveredNode.ip || hoveredNode.id.replace(/^ip:/, '')}</strong></div>
