@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 import GraphView from './components/GraphView';
+import ChartsView from './components/ChartsView';
 import INDIA_GEO_JSON from './india.json';
 import { getStateCenter, getWalletDots } from './mapUtils';
 import './index.css';
@@ -22,6 +23,8 @@ export default function Workspace() {
   const [selectedGraphNode, setSelectedGraphNode] = useState(null);
   const mapRef = useRef(null);
   const terminalEndRef = useRef(null);
+
+  const logTimers = useRef([]);
 
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -65,32 +68,63 @@ export default function Workspace() {
   const handleUpload = async () => {
     if (!file) return;
     setIsProcessing(true);
+    // Cancel any leftover timers from a previous run
+    logTimers.current.forEach(clearTimeout);
+    logTimers.current = [];
+
     setLogs(prev => [...prev, `[USER] Initiating ingest for ${file.name}...`]);
-    setTimeout(() => setLogs(prev => [...prev, "[ENGINE] Parsing ledger CSV & extracting transaction vectors..."]), 500);
-    setTimeout(() => setLogs(prev => [...prev, "[GEOIP] Resolving offline MaxMind GeoIP2 City & ASN footprint..."]), 1200);
-    setTimeout(() => setLogs(prev => [...prev, "[CORRELATION] Computing broadcast IP exponential decay scores (tau=8.0s)..."]), 2000);
-    setTimeout(() => setLogs(prev => [...prev, "[FORENSICS] Running Peeling-Chain (depth >= 3) & CoinJoin Mixing detector..."]), 3000);
-    setTimeout(() => setLogs(prev => [...prev, "[GRAPH] Executing decay-based Risk Score Propagation across edges..."]), 4000);
-    setTimeout(() => setLogs(prev => [...prev, "[NEO4J] Executing transactional MERGE writes to Neo4j graph database..."]), 5000);
+
+    const schedule = (msg, delay) => {
+      logTimers.current.push(setTimeout(() => setLogs(prev => [...prev, msg]), delay));
+    };
+
+    schedule("[ENGINE] Parsing ledger CSV & extracting transaction vectors...", 500);
+    schedule("[GEOIP] Resolving offline MaxMind GeoIP2 City & ASN footprint...", 1200);
+    schedule("[CORRELATION] Computing broadcast IP exponential decay scores (tau=8.0s)...", 2000);
+    schedule("[FORENSICS] Running Peeling-Chain (depth >= 3) & CoinJoin Mixing detector...", 3000);
+    schedule("[SHAP] Computing TreeExplainer attributions — top-3 feature contributions per flagged wallet...", 3800);
+    schedule("[GRAPH] Executing decay-based Risk Score Propagation across edges...", 4600);
+    schedule("[NEO4J] Executing transactional MERGE writes to Neo4j graph database...", 5000);
 
     const formData = new FormData();
     formData.append("file", file);
     try {
       const response = await fetch(`${API}/ingest`, { method: 'POST', body: formData });
       const result = await response.json();
+
+      if (!response.ok) {
+        // Cancel remaining scheduled logs, show real error immediately
+        logTimers.current.forEach(clearTimeout);
+        logTimers.current = [];
+        setLogs(prev => [...prev, `[ERROR] Pipeline error (${response.status}): ${result.detail || 'Unknown error'}`]);
+        setIsProcessing(false);
+        return;
+      }
+
       setTimeout(() => {
         setLogs(prev => [
           ...prev,
           `[SUCCESS] Analysis complete! Anomalies: ${result.anomalies_found}, Peeling Chains: ${result.peeling_chains_found}, CoinJoin Mixers: ${result.coinjoin_mixers_found}, Propagated Risk Wallets: ${result.propagated_risk_wallets}.`
         ]);
+        if (result.rows_skipped > 0) {
+          setLogs(prev => [...prev,
+            `[WARN] ${result.rows_skipped} malformed row(s) skipped. First: ${result.rows_skipped_sample?.[0] || 'unknown'}`
+          ]);
+        }
+        if (result.graph_truncated) {
+          setLogs(prev => [...prev,
+            `[WARN] Graph display truncated to ${result.graph_transaction_count} of ${result.total_transaction_count} transactions. Full ML analysis ran on all records.`
+          ]);
+        }
         fetchAlerts();
         setIsProcessing(false);
       }, 5500);
     } catch (error) {
-      setTimeout(() => {
-        setLogs(prev => [...prev, "[ERROR] Connection to Core Engine failed."]);
-        setIsProcessing(false);
-      }, 5500);
+      // Network error — cancel all fake log timers, show real error
+      logTimers.current.forEach(clearTimeout);
+      logTimers.current = [];
+      setLogs(prev => [...prev, `[ERROR] Connection to Core Engine failed. ${error.message || ''}`]);
+      setIsProcessing(false);
     }
   };
 
@@ -191,12 +225,27 @@ export default function Workspace() {
                 {mapMode === 'regional' && selectedState && <button className="clear-btn" onClick={() => setSelectedState(null)}>Clear Filter</button>}
               </div>
             </div>
-            {mapMode === 'neural' ? (
-              <div className="neural-map-shell">
-                <GraphView data={graphData} loading={graphLoading} highlightNode={selectedGraphNode} onNodeSelect={handleGraphNodeSelect} onReset={resetNeuralMap} />
-                <div className="graph-legend"><span><i className="graph-dot ip" /> IP</span><span><i className="graph-dot transaction" /> Transaction</span><span><i className="graph-dot wallet" /> Wallet</span><span><i className="graph-dot flagged" /> Flagged</span></div>
+            {/* Neural map — always mounted, CSS-hidden when regional tab active */}
+            <div style={{ display: mapMode === 'neural' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }} className="neural-map-shell">
+              <GraphView
+                data={graphData}
+                loading={graphLoading}
+                highlightNode={selectedGraphNode}
+                onNodeSelect={handleGraphNodeSelect}
+                onReset={resetNeuralMap}
+                visible={mapMode === 'neural'}
+              />
+              <div className="graph-legend">
+                <span><i className="graph-dot ip" /> IP</span>
+                <span><i className="graph-dot transaction" /> Transaction</span>
+                <span><i className="graph-dot wallet" /> Wallet</span>
+                <span><i className="graph-dot flagged" /> Flagged</span>
+                <span><i className="graph-dot co-spender" /> Co-Spender</span>
               </div>
-            ) : <>
+            </div>
+
+            {/* Regional map — always mounted, CSS-hidden when neural tab active */}
+            <div style={{ display: mapMode === 'regional' ? 'contents' : 'none' }}>
             {selectedState && <div className="state-badge">TARGET: {selectedState.toUpperCase()}</div>}
             {hoveredState && <div className="map-tooltip">{hoveredState}</div>}
             {topStates.length > 0 && (
@@ -227,7 +276,6 @@ export default function Workspace() {
                 ))}
               </ZoomableGroup>
             </ComposableMap>
-
             {selectedDotInspector && (
               <div className="map-dot-inspector" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="inspector-header">
@@ -259,24 +307,21 @@ export default function Workspace() {
                   </div>
                 )}
                 <div className="inspector-actions">
-                  <button onClick={() => { setMapMode('neural'); setSelectedGraphNode(`wallet:${selectedDotInspector.wallet}`); }}>
-                    🕸️ View Graph
-                  </button>
-                  <button onClick={() => window.open(`${API}/report/${selectedDotInspector.wallet}`, '_blank')}>
-                    📄 PDF Report
-                  </button>
+                  <button onClick={() => { setMapMode('neural'); setSelectedGraphNode(`wallet:${selectedDotInspector.wallet}`); }}>🕸️ View Graph</button>
+                  <button onClick={() => window.open(`${API}/report/${selectedDotInspector.wallet}`, '_blank')}>📄 PDF Report</button>
                 </div>
               </div>
             )}
-            </>}
+            </div>
           </div>
           <div className="ws-terminal">
             <h3 className="ws-pane-title" style={{ color: '#94a3b8' }}>ENGINE LOGS</h3>
             <div className="terminal-output">
-              {logs.map((log, index) => <div key={index} className={log.includes("ERROR") ? "log-err" : log.includes("SUCCESS") ? "log-succ" : "log-info"}>{log}</div>)}
+              {logs.map((log, index) => <div key={index} className={log.includes("ERROR") ? "log-err" : log.includes("WARN") ? "log-warn" : log.includes("SUCCESS") ? "log-succ" : "log-info"}>{log}</div>)}
               <div ref={terminalEndRef} />
             </div>
           </div>
+
         </div>
 
         <div className="ws-pane ws-right">
@@ -288,13 +333,43 @@ export default function Workspace() {
             {stateSuspects.length === 0 ? (
               <div className="ws-empty">No anomalous activity detected.</div>
             ) : (
-              stateSuspects.map((suspect, index) => (
-                <div key={index} className={`alert-row-flat ${highlightedWallet === suspect.wallet_address ? 'selected' : ''}`} onClick={() => handleAlertSelect(suspect)}>
-                  <div className="alert-header-flat"><span className="alert-rank-flat">FILE #{index + 1}</span><span className="alert-score-flat">{suspect.confidence_score}%</span></div>
-                  <div className="alert-wallet-flat">{suspect.wallet_address}</div>
-                  <div className="alert-details-flat"><strong>VOL:</strong> {suspect.total_volume_btc} BTC <br /><strong>ISP:</strong> {suspect.isp} <br /><button className="report-btn" onClick={() => window.open(`${API}/report/${suspect.wallet_address}`, '_blank')}>📄 Generate PDF</button></div>
-                </div>
-              ))
+              stateSuspects.map((suspect, index) => {
+                // Unified score: prefer propagated risk_score, fall back to ML confidence_score
+                const displayScore = suspect.risk_score ?? suspect.confidence_score ?? 0;
+                const scoreColor = displayScore >= 80 ? '#ef4444' : displayScore >= 60 ? '#f59e0b' : '#94a3b8';
+                return (
+                  <div
+                    key={suspect.wallet_address}
+                    className={`alert-row-flat ${highlightedWallet === suspect.wallet_address ? 'selected' : ''}`}
+                    onClick={() => handleAlertSelect(suspect)}
+                  >
+                    <div className="alert-header-flat">
+                      <span className="alert-rank-flat">FILE #{index + 1}</span>
+                      <span className="alert-score-flat" style={{ background: scoreColor, color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 }}>
+                        RISK {displayScore}%
+                      </span>
+                    </div>
+                    <div className="alert-wallet-flat">{suspect.wallet_address}</div>
+                    <div className="alert-details-flat">
+                      <strong>VOL:</strong> {suspect.total_volume_btc} BTC<br />
+                      <strong>STATE:</strong> {suspect.primary_state?.toUpperCase() || 'N/A'}<br />
+                      <strong>ISP:</strong> {suspect.isp}
+                      {suspect.risk_factors?.length > 0 && (
+                        <div style={{ marginTop: '4px', fontSize: '10px', color: '#f87171' }}>
+                          ⚠️ {suspect.risk_factors.slice(0, 2).join(', ')}
+                        </div>
+                      )}
+                      <button
+                        className="report-btn"
+                        style={{ marginTop: '6px' }}
+                        onClick={(e) => { e.stopPropagation(); window.open(`${API}/report/${suspect.wallet_address}`, '_blank'); }}
+                      >
+                        📄 Generate PDF
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

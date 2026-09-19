@@ -13,3 +13,4 @@ weasyprint==63.0
 python-multipart==0.0.12
 pytest==8.3.3
 networkx==3.4.2
+shap==0.46.0

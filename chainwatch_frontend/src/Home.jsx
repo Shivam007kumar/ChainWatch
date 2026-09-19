@@ -4,6 +4,7 @@ import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 're
 import MetricCards from './components/MetricCards';
 import AlertTable from './components/AlertTable';
 import GraphView from './components/GraphView';
+import ChartsView from './components/ChartsView';
 import INDIA_GEO_JSON from './india.json';
 import { getStateCenter, getWalletDots } from './mapUtils';
 import './index.css';
@@ -36,8 +37,7 @@ export default function Home() {
   const navigate = useNavigate();
   const { data: stats, loading: statsLoading } = useAPI('/stats');
   const { data: apiAlerts, loading: alertsLoading } = useAPI('/anomalies');
-  const { data: graphData, loading: graphLoading } = useAPI('/graph');
-  const [hoveredState, setHoveredState] = useState("");
+  const { data: graphData, loading: graphLoading } = useAPI('/graph');  const [hoveredState, setHoveredState] = useState("");
   const [alerts, setAlerts] = useState([]);
   const [wallets, setWallets] = useState([]);
   useEffect(() => { if (apiAlerts) setAlerts(apiAlerts); }, [apiAlerts]);
@@ -174,6 +174,19 @@ export default function Home() {
       </div>
       <main id="main-content" className="main-content">
         <MetricCards stats={statsLoading ? null : stats} />
+        {/* ChartsView — risk distribution donut + cluster bar chart */}
+        {stats && apiAlerts && apiAlerts.length > 0 && (() => {
+          const clusterCounts = apiAlerts.reduce((acc, alert) => {
+            const name = alert.cluster_name || 'Unknown';
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+          }, {});
+          const clusters = Object.entries(clusterCounts).map(([cluster_name, wallet_count]) => ({
+            cluster_name,
+            wallet_count,
+          }));
+          return <ChartsView stats={stats} clusters={clusters} />;
+        })()}
         <div id="threat-intel-section" className="dashboard-grid two-column">
           <div className="card map-card">
             <div className="card-header">
@@ -191,7 +204,7 @@ export default function Home() {
               {mapMode === 'neural' ? (
                 <div className="neural-map-shell">
                   <GraphView data={graphData} loading={graphLoading} highlightNode={selectedGraphNode} onNodeSelect={handleGraphNodeSelect} onReset={resetNeuralMap} />
-                  <div className="graph-legend"><span><i className="graph-dot ip" /> IP</span><span><i className="graph-dot transaction" /> Transaction</span><span><i className="graph-dot wallet" /> Wallet</span><span><i className="graph-dot flagged" /> Flagged</span></div>
+                  <div className="graph-legend"><span><i className="graph-dot ip" /> IP</span><span><i className="graph-dot transaction" /> Transaction</span><span><i className="graph-dot wallet" /> Wallet</span><span><i className="graph-dot flagged" /> Flagged</span><span><i className="graph-dot co-spender" /> Co-Spender</span></div>
                 </div>
               ) : <>
               {hoveredState && <div className="map-tooltip">{hoveredState}</div>}

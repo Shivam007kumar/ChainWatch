@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import random
 import uuid
+import json as _json
 from datetime import datetime, timedelta
 from ipaddress import IPv4Address, ip_address
 from pathlib import Path
@@ -192,10 +193,12 @@ def generate_data(target_state, include_peeling=True, include_coinjoin=True):
                 "src_port": random.randint(1024, 65535),
                 "dst_port": 8333,
                 "txid": f"peel_tx_{hop+1}_" + uuid.uuid4().hex[:12],
-                "input_addresses": str([src_w]),
-                "output_addresses": str([change_w, peel_w]),
-                "input_amounts": str([round(current_amount + peel_amt, 4)]),
-                "output_amounts": str([round(change_amt, 4), round(peel_amt, 4)]),
+                "input_addresses": _json.dumps([src_w]),
+                "output_addresses": _json.dumps([change_w, peel_w]),
+                "input_amounts": _json.dumps([round(current_amount + peel_amt, 4)]),
+                "output_amounts": _json.dumps([round(change_amt, 4), round(peel_amt, 4)]),
+                "fee": round(random.uniform(0.0001, 0.0005), 6),
+                "script_type": "P2PKH",
                 "geo_state": target_state,
             })
 
@@ -211,10 +214,12 @@ def generate_data(target_state, include_peeling=True, include_coinjoin=True):
             "src_port": random.randint(1024, 65535),
             "dst_port": 8333,
             "txid": "coinjoin_tx_" + uuid.uuid4().hex[:12],
-            "input_addresses": str(mix_inputs),
-            "output_addresses": str(mix_outputs),
-            "input_amounts": str([denom] * 4),
-            "output_amounts": str([denom - 0.001] * 4),
+            "input_addresses": _json.dumps(mix_inputs),
+            "output_addresses": _json.dumps(mix_outputs),
+            "input_amounts": _json.dumps([denom] * 4),
+            "output_amounts": _json.dumps([denom - 0.001] * 4),
+            "fee": round(random.uniform(0.0001, 0.0003), 6),
+            "script_type": "P2SH",
             "geo_state": target_state,
         })
 
@@ -243,10 +248,12 @@ def generate_data(target_state, include_peeling=True, include_coinjoin=True):
             "src_port": random.randint(1024, 65535),
             "dst_port": 8333,
             "txid": uuid.uuid4().hex,
-            "input_addresses": str(inputs),
-            "output_addresses": str(outputs),
-            "input_amounts": str([round(random.uniform(0.1, 2.0) * multiplier, 4) for _ in inputs]),
-            "output_amounts": str([round(random.uniform(0.1, 2.0) * multiplier, 4) for _ in outputs]),
+            "input_addresses": _json.dumps(inputs),
+            "output_addresses": _json.dumps(outputs),
+            "input_amounts": _json.dumps([round(random.uniform(0.1, 2.0) * multiplier, 4) for _ in inputs]),
+            "output_amounts": _json.dumps([round(random.uniform(0.1, 2.0) * multiplier, 4) for _ in outputs]),
+            "fee": round(random.uniform(0.00005, 0.0008), 6),
+            "script_type": random.choice(["P2PKH", "P2SH", "P2WPKH", "P2WSH"]),
             "geo_state": geo_state,
         })
         

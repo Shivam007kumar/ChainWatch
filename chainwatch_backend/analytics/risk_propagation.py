@@ -76,3 +76,63 @@ def propagate_risk_scores(
                 }
 
     return risk_results
+
+
+def merge_ciou_risks(
+    risk_results: dict,
+    transaction_records: list,
+    boost_factor: float = 0.85,
+) -> dict:
+    """
+    Co-spending (CIOU) risk elevation pass.
+
+    For every pair of wallets that appear as co-inputs in the same transaction,
+    if one wallet has a non-zero risk score, boost the other's risk score to
+    max(existing, seed_score * boost_factor) and label it
+    CIOU_CO_SPENDER_WITH_THREAT_WALLET.
+
+    This runs AFTER BFS propagation so it can only raise scores, never lower them.
+
+    Parameters
+    ----------
+    risk_results       : output of propagate_risk_scores — modified in place (copy returned)
+    transaction_records: full list of parsed transaction dicts
+    boost_factor       : risk multiplier applied to the co-spending peer (default 0.85)
+
+    Returns
+    -------
+    Updated risk_results dict with CIOU-boosted entries added/merged.
+    """
+    from collections import defaultdict
+
+    # Build wallet → co-spending peers map from multi-input transactions
+    ciou_graph: dict = defaultdict(set)
+    for tx in transaction_records:
+        inputs = tx["input_addresses"]
+        if len(inputs) > 1:
+            for i in range(len(inputs)):
+                for j in range(i + 1, len(inputs)):
+                    ciou_graph[inputs[i]].add(inputs[j])
+                    ciou_graph[inputs[j]].add(inputs[i])
+
+    updated = dict(risk_results)
+
+    for wallet, peers in ciou_graph.items():
+        if wallet not in risk_results:
+            continue
+        my_score = risk_results[wallet]["risk_score"]
+        if my_score <= 0:
+            continue
+
+        boosted = round(my_score * boost_factor, 1)
+        for peer in peers:
+            existing_score = updated.get(peer, {}).get("risk_score", 0.0)
+            if boosted > existing_score:
+                updated[peer] = {
+                    "risk_score":   boosted,
+                    "risk_factors": ["CIOU_CO_SPENDER_WITH_THREAT_WALLET"],
+                    "distance":     1,
+                    "seed_source":  wallet,
+                }
+
+    return updated

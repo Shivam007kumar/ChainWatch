@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+chainwatch_backend/.env
 
 # Python
 __pycache__/

@@ -28,11 +28,20 @@ function nodeImportance(node) {
   ));
 }
 
-export default function GraphView({ data, loading, highlightNode, onNodeSelect, onReset }) {
+export default function GraphView({ data, loading, highlightNode, onNodeSelect, onReset, visible }) {
   const fgRef = useRef();
   const [hoveredNode, setHoveredNode] = useState(null);
   const [copyStatus, setCopyStatus] = useState('');
   const investigationMode = Boolean(highlightNode);
+
+  // When the tab becomes visible again, re-fit the graph after the CSS
+  // display:block transition completes (~100ms is enough)
+  useEffect(() => {
+    if (visible && fgRef.current && focusedData?.nodes?.length) {
+      setTimeout(() => fgRef.current?.zoomToFit(500, 72), 120);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const focusedData = useMemo(() => {
     if (!data?.nodes?.length) return data;
@@ -202,6 +211,7 @@ export default function GraphView({ data, loading, highlightNode, onNodeSelect, 
       case 'SENT_TO_NODE':     return 'rgba(59, 130, 246, 0.15)';
       case 'INPUT_TO_TX':      return 'rgba(0, 212, 170, 0.35)';
       case 'OUTPUT_TO_WALLET': return 'rgba(168, 85, 247, 0.35)';
+      case 'SAME_ENTITY_AS':   return 'rgba(234, 179, 8, 0.60)';   // gold — co-spender
       default:                 return 'rgba(0, 0, 0, 0.1)';
     }
   }, [highlightNode]);
@@ -253,6 +263,28 @@ export default function GraphView({ data, loading, highlightNode, onNodeSelect, 
             <div className="graph-hover-row"><span>Risk Score</span><strong style={{ color: (hoveredNode.risk_score || 0) > 60 ? '#ef4444' : '#10b981' }}>{hoveredNode.risk_score || 0}%</strong></div>
             {hoveredNode.risk_factors?.length > 0 && (
               <div className="graph-hover-row"><span>Factors</span><strong style={{ fontSize: '10px', color: '#f87171' }}>{hoveredNode.risk_factors.join(', ')}</strong></div>
+            )}
+            {hoveredNode.shap_attributions?.length > 0 && (
+              <div className="graph-hover-shap">
+                <div className="graph-hover-shap-title">XAI ATTRIBUTION</div>
+                {hoveredNode.shap_attributions.slice(0, 2).map((attr, i) => (
+                  <div key={i} className="graph-hover-row">
+                    <span style={{ fontSize: '9px', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {attr.label}
+                    </span>
+                    <strong style={{
+                      color: attr.direction === 'positive' ? '#ef4444' : '#10b981',
+                      fontSize: '10px',
+                      flexShrink: 0,
+                    }}>
+                      {attr.direction === 'positive' ? '+' : '-'}{attr.pct_contribution}%
+                      <span style={{ color: '#94a3b8', fontWeight: 400, marginLeft: '3px' }}>
+                        {Math.abs(attr.sigma).toFixed(1)}σ
+                      </span>
+                    </strong>
+                  </div>
+                ))}
+              </div>
             )}
           </>}
           {hoveredNode.type === 'ip' && <>

@@ -603,3 +603,85 @@ body { font-family: var(--font); background: var(--bg-primary); color: var(--tex
   background: #3b82f6;
   border-color: #3b82f6;
 }
+
+/* ── SHAP XAI attribution chips (AlertTable) ─────────────────────────────── */
+.shap-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.shap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--mono);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.shap-pos {
+  background: rgba(239, 68, 68, 0.10);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+
+.shap-neg {
+  background: rgba(16, 185, 129, 0.09);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.24);
+}
+
+.shap-feature {
+  opacity: 0.82;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shap-pct {
+  font-weight: 800;
+}
+
+.shap-sigma {
+  opacity: 0.65;
+  font-size: 8px;
+}
+
+/* ── SHAP rows inside GraphView hover inspector ──────────────────────────── */
+.graph-hover-shap {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.graph-hover-shap-title {
+  font-size: 8px;
+  color: #94a3b8;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  font-family: var(--mono);
+}
+
+/* ── Graph legend — co-spender dot ──────────────────────────────────────── */
+.graph-dot.co-spender {
+  background: rgba(234, 179, 8, 0.85);
+  border-radius: 50%;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ── Terminal warn log line ──────────────────────────────────────────────── */
+.log-warn {
+  color: #f59e0b;
+}

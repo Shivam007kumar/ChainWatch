@@ -1,5 +1,9 @@
+import logging
+
 import networkx as nx
 from collections import defaultdict
+
+logger = logging.getLogger("chainwatch.peeling_chain")
 
 def detect_peeling_chains(transaction_records: list[dict], min_hops: int = 3) -> list[dict]:
     """
@@ -67,14 +71,22 @@ def detect_peeling_chains(transaction_records: list[dict], min_hops: int = 3) ->
     # 3. Find paths of length >= min_hops
     peeling_chains = []
     chain_counter = 1
+    MAX_PATH_ITERATIONS = 10_000   # hard cap — prevents hang on large graphs
 
     # Find root nodes (nodes with in-degree 0 or multiple inputs)
     roots = [n for n in G.nodes() if G.in_degree(n) == 0]
     for root in roots:
+        if chain_counter > MAX_PATH_ITERATIONS:
+            logger.warning(f"Peeling chain search capped at {MAX_PATH_ITERATIONS} paths.")
+            break
         for target in G.nodes():
             if root == target:
                 continue
-            for path in nx.all_simple_paths(G, source=root, target=target):
+            if chain_counter > MAX_PATH_ITERATIONS:
+                break
+            for path in nx.all_simple_paths(G, source=root, target=target, cutoff=min_hops + 3):
+                if chain_counter > MAX_PATH_ITERATIONS:
+                    break
                 if len(path) - 1 >= min_hops:
                     tx_sequence = []
                     peeled_wallets = []
