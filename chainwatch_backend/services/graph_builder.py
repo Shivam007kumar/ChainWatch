@@ -14,14 +14,12 @@ from analytics.correlation import correlate_captures
 from analytics.peeling_chain import detect_coinjoin_mixing, detect_peeling_chains
 from analytics.risk_propagation import merge_ciou_risks, propagate_risk_scores
 from analytics.shap_explainer import FEATURE_NAMES, explain_anomalies
-from config import BASE_DIR
+from config import BASE_DIR, settings
 from db import queries
 from db.neo4j_driver import run_query
 from services.geoip import lookup_ip
 
 logger = logging.getLogger("chainwatch.graph_builder")
-
-MAX_GRAPH_TRANSACTIONS = 1200
 
 # ── Cluster characterisation — dynamic label generation (R5) ─────────────────
 _FEATURE_DESCRIPTORS = [
@@ -232,6 +230,11 @@ def process_ledger_csv(contents: bytes) -> dict:
       10. JSON file outputs — anomaly_results sorted by risk_score desc
     """
     df = pd.read_csv(io.BytesIO(contents))
+
+    # Dataset identity — sha256 of raw file bytes, first 16 hex chars
+    import hashlib
+    dataset_id = hashlib.sha256(contents).hexdigest()[:16]
+    filename   = "ledger.csv"   # overridden by the caller when filename is known
 
     wallet_stats: dict = defaultdict(lambda: {
         "tx_count": 0, "volume": 0.0, "ips": set(),
@@ -489,7 +492,7 @@ def process_ledger_csv(contents: bytes) -> dict:
         batch_broadcasts = []
         batch_ciou       = []
 
-        for record in transaction_records[:MAX_GRAPH_TRANSACTIONS]:
+        for record in transaction_records[:settings.max_graph_transactions]:
             txid = record["txid"]
             # R2 fix: write actual fee from CSV, not hardcoded 0.0
             batch_txs.append({
@@ -542,6 +545,130 @@ def process_ledger_csv(contents: bytes) -> dict:
         if batch_ciou:
             run_query(*queries.batch_merge_same_entity_relationships(batch_ciou), write=True)
 
+        # ── D2: OBSERVED_DESTINATION edges (dst_ip → Transaction) ────────────
+        batch_dst_observations = []
+        for record in transaction_records[:settings.max_graph_transactions]:
+            dst_ip   = record.get("dst_ip", "Unknown")
+            dst_info = record.get("dst_ip_info", {})
+            if dst_ip and dst_ip != "Unknown":
+                batch_dst_observations.append({
+                    "txid":      record["txid"],
+                    "dst_ip":    dst_ip,
+                    "dst_asn":   dst_info.get("asn", "N/A"),
+                    "dst_state": dst_info.get("state", "Unknown"),
+                    "src_port":  record.get("src_port", 0),
+                    "dst_port":  record.get("dst_port", 8333),
+                    "timestamp": record["timestamp"],
+                })
+        if batch_dst_observations:
+            run_query(*queries.batch_merge_observed_destinations(batch_dst_observations), write=True)
+
+        # ── B5: Dataset node + isolation relationships ────────────────────────
+        run_query(*queries.merge_dataset(dataset_id, filename, len(transaction_records)), write=True)
+
+        all_wallet_addresses = list(wallet_stats.keys())
+        all_txids            = [r["txid"] for r in transaction_records[:settings.max_graph_transactions]]
+        all_ip_addresses     = list(batch_ips_dict.keys())
+
+        if all_wallet_addresses:
+            run_query(*queries.batch_link_dataset_wallets(dataset_id, all_wallet_addresses), write=True)
+        if all_txids:
+            run_query(*queries.batch_link_dataset_txs(dataset_id, all_txids), write=True)
+        if all_ip_addresses:
+            run_query(*queries.batch_link_dataset_ips(dataset_id, all_ip_addresses), write=True)
+
+        # ── D1: Persist Alert nodes to Neo4j ──────────────────────────────────
+        if anomaly_results or peeling_chains or coinjoin_mixers:
+            from datetime import datetime as _dt, timezone as _tz
+            created_at_str = _dt.now(_tz.utc).isoformat()
+            alert_props = []
+            seq = 1   # global sequence for this dataset's alerts
+
+            # IsolationForest anomaly alerts (one per flagged wallet)
+            for ar in anomaly_results:
+                rs = float(ar.get("risk_score") or ar.get("confidence_score") or 0.0)
+                alert_props.append({
+                    "id":            f"ALT-{dataset_id[:8]}-{seq:06d}",
+                    "dataset_id":    dataset_id,
+                    "entity_type":   "wallet",
+                    "entity_id":     ar["wallet_address"],
+                    "detector":      "isolation_forest",
+                    "risk_score":    rs,
+                    "anomaly_score": None,
+                    "severity":      (
+                        "critical" if rs >= 90 else
+                        "high"     if rs >= 70 else
+                        "medium"   if rs >= 50 else "low"
+                    ),
+                    "cluster_name":  ar.get("cluster_name", ""),
+                    "primary_state": ar.get("primary_state", "Unknown"),
+                    "created_at":    created_at_str,
+                    "status":        "open",
+                    "evidence_json": json.dumps([]),
+                    "shap_json":     json.dumps(ar.get("shap_attributions", [])),
+                    "risk_factors":  ar.get("risk_factors", []),
+                    "correlated_txids": ar.get("correlated_txids", []),
+                })
+                seq += 1
+
+            # Peeling-chain alerts (one per detected chain, entity = start wallet)
+            for chain in peeling_chains:
+                rs = float(chain.get("risk_score", 80.0))
+                alert_props.append({
+                    "id":            f"ALT-{dataset_id[:8]}-{seq:06d}",
+                    "dataset_id":    dataset_id,
+                    "entity_type":   "wallet",
+                    "entity_id":     chain["start_wallet"],
+                    "detector":      "peeling_chain",
+                    "risk_score":    rs,
+                    "anomaly_score": None,
+                    "severity":      "high" if rs >= 70 else "medium",
+                    "cluster_name":  "",
+                    "primary_state": "Unknown",
+                    "created_at":    created_at_str,
+                    "status":        "open",
+                    "evidence_json": json.dumps([{
+                        "type":  "peeling_chain",
+                        "title": f"{chain['hop_count']}-hop peeling chain",
+                        "hop_count": chain["hop_count"],
+                        "total_peeled_btc": chain.get("total_peeled_volume_btc", 0.0),
+                    }]),
+                    "shap_json":        json.dumps([]),
+                    "risk_factors":     ["PEELING_CHAIN_DETECTED"],
+                    "correlated_txids": chain.get("transactions_involved", [])[:20],
+                })
+                seq += 1
+
+            # CoinJoin/mixer alerts (one per detected mixing transaction)
+            for mix in coinjoin_mixers:
+                rs = float(mix.get("risk_score", 85.0))
+                alert_props.append({
+                    "id":            f"ALT-{dataset_id[:8]}-{seq:06d}",
+                    "dataset_id":    dataset_id,
+                    "entity_type":   "transaction",
+                    "entity_id":     mix["txid"],
+                    "detector":      "coinjoin",
+                    "risk_score":    rs,
+                    "anomaly_score": None,
+                    "severity":      "high",
+                    "cluster_name":  "",
+                    "primary_state": "Unknown",
+                    "created_at":    created_at_str,
+                    "status":        "open",
+                    "evidence_json": json.dumps([{
+                        "type":  "coinjoin",
+                        "title": f"CoinJoin: {mix['input_count']} inputs / {mix['output_count']} outputs",
+                        "denominated_btc": mix.get("denominated_amount_btc", 0.0),
+                    }]),
+                    "shap_json":        json.dumps([]),
+                    "risk_factors":     ["COINJOIN_MIXER_DETECTED"],
+                    "correlated_txids": [mix["txid"]],
+                })
+                seq += 1
+
+            if alert_props:
+                run_query(*queries.batch_merge_alerts(alert_props), write=True)
+
         logger.info("✅ Neo4j batch write completed.")
     except Exception as exc:
         logger.warning(f"Neo4j write skipped (file-backed fallback active): {exc}")
@@ -555,7 +682,7 @@ def process_ledger_csv(contents: bytes) -> dict:
     nodes: dict[str, dict] = {}
     links: dict[str, dict] = {}
 
-    for record in transaction_records[:MAX_GRAPH_TRANSACTIONS]:
+    for record in transaction_records[:settings.max_graph_transactions]:
         tx_id    = f"tx:{record['txid']}"
         tx_value = sum(record["input_amounts"]) + sum(record["output_amounts"])
         nodes[tx_id] = {
@@ -627,7 +754,7 @@ def process_ledger_csv(contents: bytes) -> dict:
 
     # ── SAME_ENTITY_AS (CIOU) co-spending edges → graph JSON ─────────────────
     seen_ciou: set = set()
-    for record in transaction_records[:MAX_GRAPH_TRANSACTIONS]:
+    for record in transaction_records[:settings.max_graph_transactions]:
         inp_list = record["input_addresses"]
         if len(inp_list) > 1:
             for a_idx in range(len(inp_list)):
@@ -691,13 +818,14 @@ def process_ledger_csv(contents: bytes) -> dict:
 
     return {
         "message":                 "Ingestion and Forensic ML Analysis Complete",
+        "dataset_id":              dataset_id,
         "anomalies_found":         len(anomaly_results),
         "peeling_chains_found":    len(peeling_chains),
         "coinjoin_mixers_found":   len(coinjoin_mixers),
         "propagated_risk_wallets": len(propagated_risks),
         "rows_skipped":            rows_skipped,
         "rows_skipped_sample":     rows_skipped_sample,
-        "graph_truncated":         len(transaction_records) > MAX_GRAPH_TRANSACTIONS,
-        "graph_transaction_count": min(len(transaction_records), MAX_GRAPH_TRANSACTIONS),
+        "graph_truncated":         len(transaction_records) > settings.max_graph_transactions,
+        "graph_transaction_count": min(len(transaction_records), settings.max_graph_transactions),
         "total_transaction_count": len(transaction_records),
     }

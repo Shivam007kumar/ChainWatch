@@ -39,10 +39,10 @@ def detect_peeling_chains(transaction_records: list[dict], min_hops: int = 3) ->
             ratio1 = amt1 / total_out
             ratio2 = amt2 / total_out
 
-            if ratio1 > 0.80 and ratio2 < 0.20:
+            if ratio1 >= 0.80 and ratio2 <= 0.20:
                 change_wallet, peel_wallet = out1, out2
                 change_amt, peel_amt = amt1, amt2
-            elif ratio2 > 0.80 and ratio1 < 0.20:
+            elif ratio2 >= 0.80 and ratio1 <= 0.20:
                 change_wallet, peel_wallet = out2, out1
                 change_amt, peel_amt = amt2, amt1
             else:

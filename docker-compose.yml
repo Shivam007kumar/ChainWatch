@@ -1,11 +1,41 @@
-version: '3.8'
+# ChainWatch — docker-compose.yml
+#
+# Tested combination (verified 2026-09-22):
+#   Server:  neo4j:5.12.0
+#   Driver:  neo4j==5.25.0 (Python)
+#   Healthcheck: wget (confirmed present in neo4j:5.12.0)
+#
+# Usage:
+#   docker compose up -d          # start Neo4j
+#   docker compose down           # stop Neo4j (data preserved in named volumes)
+#   docker compose down -v        # stop and wipe all data
+#
+# Environment:
+#   Set NEO4J_PASSWORD in chainwatch_backend/.env
+#   Backend connects via bolt://localhost:7687
+
 services:
   neo4j:
     image: neo4j:5.12.0
-    ports:
-      - "7474:7474" # Browser UI
-      - "7687:7687" # Database connection
     environment:
-      - NEO4J_AUTH=neo4j/hackathon2026
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-chainwatch2026}"
+    ports:
+      - "7474:7474"   # Neo4j Browser UI
+      - "7687:7687"   # Bolt protocol (driver connection)
     volumes:
-      - ./neo4j_data:/data
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_plugins:/plugins
+      - neo4j_import:/var/lib/neo4j/import
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_plugins:
+  neo4j_import:

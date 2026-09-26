@@ -113,11 +113,6 @@ export default function Home() {
     }, 500);
   };
 
-  const getStateVolume = (stateName, index) => {
-    if (!stats) return 0;
-    return Math.floor(stats.total_transactions / 10) + (index * 45);
-  };
-
   return (
     <div className="app-shell" style={{ zoom: zoom }}>
       <div className="access-bar">
@@ -130,7 +125,7 @@ export default function Home() {
       </div>
       <header className="topbar">
         <div className="topbar-brand" onDoubleClick={triggerLiveIsolation} style={{ cursor: 'default' }}>
-          <img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" alt="Emblem" style={{ height: '56px', filter: 'brightness(0) invert(1)' }} />
+          <img src="/emblem_india.svg" alt="Emblem of India" style={{ height: '56px', filter: 'brightness(0) invert(1)' }} />
           <div className="brand-titles">
             <div className="brand-goi">{t.gov}</div>
             <div className="brand-name">{t.ntro}</div>
@@ -142,7 +137,9 @@ export default function Home() {
             <span style={{ color: '#94a3b8', fontWeight: 500, marginLeft: 8 }}>{t.subtitle}</span>
           </div>
           <div className="shield-status"><span className="shield-icon pulse-shield">🛡️</span> SECURED — FULLY OFFLINE</div>
-          <button className="ingest-btn" onClick={() => navigate('/workspace')}>➕ Ingest New Ledger</button>
+          <button className="ingest-btn" onClick={() => navigate('/alerts')}>🚨 Alerts</button>
+          <button className="ingest-btn" onClick={() => navigate('/search')}>🔍 Search</button>
+          <button className="ingest-btn" onClick={() => navigate('/ingest')}>⬆ Ingest</button>
         </div>
       </header>
       {liveThreatData && (
@@ -263,6 +260,9 @@ export default function Home() {
                     <button onClick={() => { setMapMode('neural'); setSelectedGraphNode(`wallet:${selectedDotInspector.wallet}`); }}>
                       🕸️ View Graph
                     </button>
+                    <button onClick={() => navigate(`/investigate/${selectedDotInspector.wallet}`)}>
+                      🔍 Investigate
+                    </button>
                     <button onClick={() => window.open(`${API}/report/${selectedDotInspector.wallet}`, '_blank')}>
                       📄 PDF Report
                     </button>
@@ -281,10 +281,17 @@ export default function Home() {
       <footer className="footer-main">
         <div className="footer-columns">
           <div className="footer-col"><h3>{t.about}</h3><p>{t.aboutText}</p></div>
-          <div className="footer-col"><h3>{t.quickLinks}</h3><ul><li><a href="#">Dashboard Home</a></li><li><a href="#">Generate Intelligence Report</a></li><li><a href="#">Threat Pattern Database</a></li><li><a href="#">User Manual & API Docs</a></li></ul></div>
+          <div className="footer-col"><h3>{t.quickLinks}</h3><ul>
+            <li><a href="/">Dashboard Home</a></li>
+            <li><a href="/investigate">Neural Map</a></li>
+            <li><a href="/alerts">Alerts</a></li>
+            <li><a href="/search">Search</a></li>
+            <li><a href="/ingest">Ingest Ledger</a></li>
+            <li><a href="/about">About &amp; Methodology</a></li>
+          </ul></div>
           <div className="footer-col"><h3>{t.nodalAgency}</h3><p><strong>NTRO</strong><br/>Block-III, Old JNU Campus<br/>New Delhi - 110067<br/>Email: cyber-intel@ntro.gov.in</p></div>
         </div>
-        <div className="footer-bottom"><p>{t.copyright}</p><div className="footer-bottom-links"><a href="#">Privacy Policy</a><span>|</span><a href="#">Terms of Use</a><span>|</span><a href="#">Security Policy</a></div></div>
+        <div className="footer-bottom"><p>{t.copyright}</p><div className="footer-bottom-links"><a href="/about">About</a><span>|</span><a href="/about#methodology">Methodology</a><span>|</span><a href="/about#architecture">Architecture</a></div></div>
       </footer>
     </div>
   );

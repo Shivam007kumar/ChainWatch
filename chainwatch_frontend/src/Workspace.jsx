@@ -89,7 +89,11 @@ export default function Workspace() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const response = await fetch(`${API}/ingest`, { method: 'POST', body: formData });
+      const response = await fetch(`${API}/ingest`, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-API-Key': 'chainwatch-local' },
+      });
       const result = await response.json();
 
       if (!response.ok) {
@@ -139,7 +143,7 @@ export default function Workspace() {
   const handleClearWorkspace = async () => {
     try {
       setLogs(prev => [...prev, "[SYSTEM] Initiating database & workspace wipe..."]);
-      await fetch(`${API}/clear`, { method: 'POST' });
+      await fetch(`${API}/clear`, { method: 'POST', headers: { 'X-API-Key': 'chainwatch-local' } });
       setAlerts([]);
       setGraphData({ nodes: [], links: [], transaction_count: 0 });
       setSelectedState(null);

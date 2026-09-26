@@ -42,3 +42,13 @@ dist-ssr
 /neo4j_data/
 /neo4j/logs/
 in_shp/
+
+
+
+# Generated synthetic datasets
+chainwatch_*.csv
+
+# GeoIP / large external database files
+GeoLite2-*/
+dbip-asn-lite-*.csv
+*.mmdb

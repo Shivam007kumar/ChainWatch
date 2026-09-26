@@ -1,24 +1,74 @@
 import json
 import logging
 import re
+from contextlib import asynccontextmanager
 from html import escape
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from weasyprint import HTML
 
-from config import BASE_DIR
+from config import BASE_DIR, CITY_DB_PATH, ALT_CITY_DB_PATH, LOCATION_CSV_PATH, settings
 from services.graph_builder import process_ledger_csv
 
 logger = logging.getLogger("chainwatch.api")
 
 WALLET_ID_RE = re.compile(r'^[a-zA-Z0-9_\-]{1,64}$')
 
-app = FastAPI(title="ChainWatch Core Engine", version="2.0.0")
+
+# ── Startup / shutdown lifecycle ──────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Startup:
+      1. Initialize Neo4j schema (constraints + indexes) — idempotent
+      2. Verify Neo4j connectivity — fail fast if unreachable
+      3. Check GeoIP availability — warn if only CSV fallback
+
+    Shutdown: nothing required (Neo4j driver is lazy-initialized).
+    """
+    _startup()
+    yield
+
+
+def _startup() -> None:
+    # 1. Schema init
+    try:
+        from db.schema import init_schema
+        init_schema()
+    except Exception as exc:
+        logger.error(f"Schema initialization failed: {exc}")
+
+    # 2. Neo4j connectivity ping
+    try:
+        from db.neo4j_driver import run_query
+        run_query("RETURN 1 AS ok")
+        logger.info(f"Neo4j connected: {settings.neo4j_uri} | database: {settings.neo4j_database}")
+    except Exception as exc:
+        logger.error(
+            f"Neo4j is UNREACHABLE at {settings.neo4j_uri}. "
+            f"Start docker-compose or set NEO4J_URI in .env. Error: {exc}"
+        )
+
+    # 3. GeoIP availability
+    if CITY_DB_PATH.exists() or ALT_CITY_DB_PATH.exists():
+        logger.info("GeoIP: MaxMind city database found.")
+    elif LOCATION_CSV_PATH.exists():
+        logger.warning("GeoIP: MaxMind not found — CSV fallback active. Resolution may be less precise.")
+    else:
+        logger.error("GeoIP: No database found. IP enrichment will return Unknown for all addresses.")
+
+
+app = FastAPI(
+    title="ChainWatch Core Engine",
+    version="2.0.0",
+    lifespan=lifespan,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -31,7 +81,86 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── API key middleware (Stage I) ───────────────────────────────────────────────
+# Protects destructive endpoints: POST/DELETE /clear and POST /ingest.
+# Read-only investigation endpoints do NOT require an API key.
+_PROTECTED = {
+    ("POST",   "/api/v1/ingest"),
+    ("POST",   "/api/v1/clear"),
+    ("DELETE", "/api/v1/clear"),
+}
+
+@app.middleware("http")
+async def api_key_guard(request: Request, call_next):
+    key = (request.method, request.url.path)
+    if key in _PROTECTED:
+        provided = request.headers.get("X-API-Key", "")
+        if provided != settings.api_key:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Missing or invalid X-API-Key header."},
+            )
+    return await call_next(request)
+
+# ── Mount routers ─────────────────────────────────────────────────────────────
+from api.health        import router as health_router
+from api.alerts        import router as alerts_router
+from api.investigations import router as investigations_router
+from api.search        import router as search_router
+from api.stats         import router as stats_router
+
+app.include_router(health_router,        prefix="/api/v1")
+app.include_router(stats_router,         prefix="/api/v1")
+app.include_router(alerts_router,        prefix="/api/v1")
+app.include_router(investigations_router, prefix="/api/v1")
+app.include_router(search_router,        prefix="/api/v1")
+
 GRAPH_FILE = BASE_DIR / "graph.json"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# API CONTRACT FREEZE  — ChainWatch Core Engine v2.0  (Stage K)
+# ══════════════════════════════════════════════════════════════════════════════
+# The following endpoint contracts are FROZEN. No breaking changes may be made
+# to URL structure, required parameters, or response field names without an
+# explicit version bump (e.g. /api/v2/...).
+#
+# Frontend work MUST NOT begin until this freeze is in place and the
+# integration test (tests/test_integration.py) passes end-to-end.
+#
+# FROZEN ENDPOINTS
+# ────────────────
+# POST   /api/v1/ingest                                    [API-key required]
+# GET    /api/v1/ingest/{job_id}                           (future — pipeline.py)
+#
+# GET    /api/v1/health
+# GET    /api/v1/health/ready
+#
+# GET    /api/v1/stats?dataset_id=
+# GET    /api/v1/search?q=&types=&limit=
+#
+# GET    /api/v1/alerts?dataset_id=&severity=&min_risk=&detector=&sort=&order=&limit=&offset=
+# GET    /api/v1/alerts/{alert_id}
+#
+# GET    /api/v1/investigations/wallet/{address}?dataset_id=
+# GET    /api/v1/investigations/wallet/{address}/graph?hops=&direction=
+# GET    /api/v1/investigations/wallet/{address}/timeline?dataset_id=
+# GET    /api/v1/investigations/transaction/{txid}?dataset_id=
+# GET    /api/v1/investigations/ip/{ip}?dataset_id=
+# GET    /api/v1/investigations/path?source=&target=&max_hops=&direction=&strategy=
+#
+# GET    /api/v1/report/{wallet_id}                        (PDF dossier)
+#
+# POST   /api/v1/clear                                     [API-key required]
+# DELETE /api/v1/clear                                     [API-key required]
+#
+# LEGACY ENDPOINTS (kept for frontend backward compat — not frozen, may change)
+# ─────────────────────────────────────────────────────────────────────────────
+# GET    /api/v1/anomalies
+# GET    /api/v1/graph
+# GET    /api/v1/peeling-chains
+# GET    /api/v1/mixers
+# GET    /api/v1/graph/wallet/{id}
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
@@ -184,6 +313,9 @@ async def ingest_ledger(file: UploadFile = File(...)):
     pipeline (GeoIP → Correlation → IsolationForest → SHAP → KMeans →
     PeelingChain → CoinJoin → RiskPropagation → Neo4j MERGE), and updates
     all JSON workspace files.
+
+    Requires X-API-Key header (enforced by api_key_guard middleware).
+    Max upload size: settings.max_upload_bytes (default 50 MB).
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
@@ -204,10 +336,16 @@ async def ingest_ledger(file: UploadFile = File(...)):
     if not contents:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
+    # Enforce upload size limit
+    if len(contents) > settings.max_upload_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(contents):,} bytes). Maximum: {settings.max_upload_bytes:,} bytes.",
+        )
+
     try:
         result = process_ledger_csv(contents)
     except ValueError as exc:
-        # Malformed CSV rows, bad list fields, etc.
         raise HTTPException(status_code=422, detail=f"CSV parsing error: {exc}")
     except MemoryError:
         raise HTTPException(status_code=507, detail="File too large to process in available memory.")
