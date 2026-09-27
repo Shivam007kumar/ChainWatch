@@ -6,8 +6,9 @@ import ChartsView from './components/ChartsView';
 import INDIA_GEO_JSON from './india.json';
 import { getStateCenter, getWalletDots } from './mapUtils';
 import './index.css';
+import { API_BASE } from './api/client';
 
-const API = 'http://localhost:8000/api/v1';
+const API = API_BASE;
 
 export default function Workspace() {
   const navigate = useNavigate();

@@ -17,8 +17,13 @@ import ChartsView from '../components/ChartsView';
 import CwNav from '../components/CwNav';
 import INDIA_GEO_JSON from '../india.json';
 import { getStateCenter, getWalletDots } from '../mapUtils';
+import { API_BASE } from '../api/client';
 
-const API = 'http://localhost:8000/api/v1';
+// API_BASE is set to /api/v1 at build time via VITE_API_BASE.
+// In Docker the browser calls http://localhost/api/v1/... and nginx
+// proxies to backend:8000.  Falls back to http://localhost:8000/api/v1
+// for local dev (Start.sh).
+const API = API_BASE;
 
 const dict = {
   en: {
