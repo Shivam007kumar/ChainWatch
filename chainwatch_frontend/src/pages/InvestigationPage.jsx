@@ -7,7 +7,7 @@
  * Graph data source: GET /investigations/wallet/{address}/graph (frozen)
  * Inspector panels: filled in P4b–P4f
  */
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { getHealth }          from '../api/health';
 import { getWalletGraph }     from '../api/investigations';
@@ -137,8 +137,20 @@ function InvestigateEmptyState({ navigate }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function InvestigationPage() {
-  const navigate      = useNavigate();
-  const { address }   = useParams();
+  const navigate           = useNavigate();
+  const { address }        = useParams();
+  const [searchParams]     = useSearchParams();
+
+  // ?tx=<txid> or ?ip=<ip> — direct deep-link from Search results.
+  // Produces a node shape that InspectorPanel already understands (P4c / P4d).
+  // This is a pure derivation — no extra state, no fake graph nodes.
+  const queryNode = (() => {
+    const tx = searchParams.get('tx');
+    if (tx) return { type: 'transaction', id: `tx:${tx}`, label: tx };
+    const ip = searchParams.get('ip');
+    if (ip) return { type: 'ip', id: `ip:${ip}`, ip };
+    return null;
+  })();
 
   // Backend status
   const [status, setStatus] = useState('checking');
@@ -439,7 +451,7 @@ export default function InvestigationPage() {
         {/* ── Inspector panel ── */}
         <div className="inv-inspector">
           <InspectorPanel
-            selectedNode={selectedNode}
+            selectedNode={queryNode ?? selectedNode}
             selectedLink={selectedLink}
             onNavigate={handleNavigate}
             onClear={handleReset}

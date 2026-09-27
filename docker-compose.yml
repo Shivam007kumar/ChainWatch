@@ -1,41 +1,151 @@
-# ChainWatch — docker-compose.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# ChainWatch — Docker Compose
 #
-# Tested combination (verified 2026-09-22):
-#   Server:  neo4j:5.12.0
-#   Driver:  neo4j==5.25.0 (Python)
-#   Healthcheck: wget (confirmed present in neo4j:5.12.0)
+# Normal startup (Neo4j + backend + frontend/nginx):
+#   docker compose up -d --build
 #
-# Usage:
-#   docker compose up -d          # start Neo4j
-#   docker compose down           # stop Neo4j (data preserved in named volumes)
-#   docker compose down -v        # stop and wipe all data
+# With optional Streamlit generator:
+#   docker compose --profile tools up -d --build
+#
+# Services (normal):
+#   neo4j      — Neo4j 5.12.0, bolt://neo4j:7687 (internal only)
+#   backend    — FastAPI, port 8000 (internal only)
+#   frontend   — nginx:alpine serving React dist/ + reverse-proxying /api/*
+#                Sole public entry point → host:80 (and 443 declared)
+#
+# Services (profile=tools):
+#   generator  — Streamlit generator, host:8501
 #
 # Environment:
-#   Set NEO4J_PASSWORD in chainwatch_backend/.env
-#   Backend connects via bolt://localhost:7687
+#   Copy chainwatch_backend/.env.example → chainwatch_backend/.env
+#   Set NEO4J_PASSWORD and API_KEY.  All other defaults work out of the box.
+#
+# Data persistence:
+#   Neo4j data lives in named Docker volumes (neo4j_data, neo4j_logs, …).
+#   `docker compose down` preserves volumes.  `docker compose down -v` wipes them.
+#   Do NOT run `down -v` unless you intend to delete all graph data.
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
+
+  # ── Neo4j 5.12.0 ───────────────────────────────────────────────────────────
   neo4j:
     image: neo4j:5.12.0
+    restart: unless-stopped
     environment:
       NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-chainwatch2026}"
     ports:
-      - "7474:7474"   # Neo4j Browser UI
-      - "7687:7687"   # Bolt protocol (driver connection)
+      # Neo4j Browser UI — for direct DB inspection during development.
+      # Comment out before public deployment.
+      - "7474:7474"
+      # Bolt — exposed for local development and test suite (tests run on the host).
+      # Comment out before public deployment to restrict to internal Docker network.
+      - "7687:7687"
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
       - neo4j_plugins:/plugins
       - neo4j_import:/var/lib/neo4j/import
     healthcheck:
-      test: ["CMD-SHELL", "wget -O - http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      # wget is present in neo4j:5.12.0 — confirmed in docker-compose audit
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 > /dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 6
+    networks:
+      - chainwatch
 
+  # ── FastAPI backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    restart: unless-stopped
+    env_file:
+      # Reads all settings from chainwatch_backend/.env.
+      # NEO4J_URI is overridden below to ensure the container service name is used.
+      - chainwatch_backend/.env
+    environment:
+      # Force inter-container Neo4j address.  This overrides any value in .env.
+      NEO4J_URI: "bolt://neo4j:7687"
+    volumes:
+      # GeoIP MMDB databases (optional).
+      # Place GeoIP-City.mmdb and GeoIP-ASN.mmdb in ./geoip/ on the host.
+      # config.py checks ALT_CITY_DB_PATH = /app/database/GeoIP-City.mmdb
+      # If the ./geoip directory is empty or absent, CSV fallback is used.
+      - ./geoip:/app/database:ro
+      # IP reference CSV (tracked in git, always present)
+      - ./IP_Address.csv:/app/../IP_Address.csv:ro
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    # Not exposed on host — all traffic routes through the frontend/nginx service.
+    expose:
+      - "8000"
+    networks:
+      - chainwatch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+
+  # ── Frontend + Nginx (public entry point) ───────────────────────────────────
+  # This image bakes in:
+  #   1. The React production build (dist/) served as static files
+  #   2. The nginx.conf reverse proxy (/ → static, /api/* → backend:8000)
+  # It is the ONLY service exposing ports to the host.
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        # /api/v1 = same-origin path.  Browser sends GET /api/v1/stats,
+        # nginx proxies it to http://backend:8000/api/v1/stats.
+        VITE_API_BASE: /api/v1
+        VITE_API_KEY: ${API_KEY:-chainwatch-local}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - chainwatch
+
+  # ── Streamlit generator (optional — activate with --profile tools) ──────────
+  generator:
+    profiles:
+      - tools
+    build:
+      context: .
+      dockerfile: docker/generator.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - chainwatch_backend/.env
+    ports:
+      # Exposed directly to the host so analysts can open the generator UI.
+      - "8501:8501"
+    volumes:
+      # Generated CSVs land in ./exports/ on the host.
+      # Upload them via the /ingest page at http://localhost.
+      - ./exports:/app/exports
+    networks:
+      - chainwatch
+
+# ── Named volumes ──────────────────────────────────────────────────────────────
+# Persist Neo4j data across container restarts and `docker compose down`.
+# Only destroyed by: docker compose down -v
 volumes:
   neo4j_data:
   neo4j_logs:
   neo4j_plugins:
   neo4j_import:
+
+# ── Network ─────────────────────────────────────────────────────────────────
+networks:
+  chainwatch:
+    driver: bridge
