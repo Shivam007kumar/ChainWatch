@@ -103,9 +103,31 @@ export default function InvestigationGraph({
   selectedPath   = null,   // { source: nodeId, target: nodeId }
 }) {
   const fgRef = useRef();
+  const containerRef = useRef();
+  const [dims, setDims] = useState({ width: 0, height: 0 });
   const [hoveredNode, setHoveredNode] = useState(null);
   const [hoveredLink, setHoveredLink] = useState(null);
   const [copyStatus,  setCopyStatus]  = useState('');
+
+  // ── Measure container dimensions via ResizeObserver ────────────────────────
+  // ForceGraph2D reads width/height on mount. When the canvas lives inside a
+  // flex layout, clientWidth/clientHeight may be 0 on the very first mount
+  // (browser hasn't finished layout yet). Passing explicit measured dimensions
+  // fixes the blank-canvas-on-first-visit bug.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // Measure immediately — may already have valid dimensions on re-mounts
+    setDims({ width: el.clientWidth, height: el.clientHeight });
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) {
+        setDims({ width: Math.floor(width), height: Math.floor(height) });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // ── Normalise backend response ─────────────────────────────────────────────
   // /investigations/wallet/{addr}/graph returns { nodes[], edges[], meta{} }
@@ -344,7 +366,7 @@ export default function InvestigationGraph({
   }
 
   return (
-    <>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ForceGraph2D
         ref={fgRef}
         graphData={visibleData}
@@ -364,8 +386,8 @@ export default function InvestigationGraph({
         onLinkClick={handleLinkClick}
         onNodeHover={handleNodeHover}
         onBackgroundClick={handleBgClick}
-        width={undefined}   /* fills CSS container */
-        height={undefined}
+        width={dims.width  || undefined}
+        height={dims.height || undefined}
       />
 
       {/* ── Hover inspector — matches existing graph-hover-inspector style ── */}
@@ -470,6 +492,6 @@ export default function InvestigationGraph({
           <div className="inv-graph-legend__dot" style={{ background: '#eab308' }} /> Selected
         </div>
       </div>
-    </>
+    </div>
   );
 }

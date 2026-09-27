@@ -401,7 +401,40 @@ export default function InvestigationPage() {
 
           {/* ── Graph canvas ── */}
           <div className="inv-graph-canvas">
-            {!address ? (
+            {queryNode ? (
+              // TX or IP deep-link mode — no wallet graph; direct user to the inspector
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                padding: '32px 24px',
+                background: 'radial-gradient(circle at center, #ffffff 0%, #f2f4f7 100%)',
+                gap: 10,
+              }}>
+                <div style={{ fontSize: 28, opacity: 0.18 }}>
+                  {queryNode.type === 'transaction' ? '⛓' : '🌐'}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {queryNode.type === 'transaction' ? 'Transaction Details' : 'IP Details'}
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center', maxWidth: 340, lineHeight: 1.65 }}>
+                  {queryNode.type === 'transaction'
+                    ? 'Transaction details are shown in the inspector panel →'
+                    : 'IP details are shown in the inspector panel →'}
+                </div>
+                <div style={{
+                  marginTop: 8,
+                  fontFamily: 'var(--mono)',
+                  fontSize: 10,
+                  color: '#94a3b8',
+                  wordBreak: 'break-all',
+                  maxWidth: 360,
+                  textAlign: 'center',
+                }}>
+                  {queryNode.type === 'transaction' ? queryNode.label : queryNode.ip}
+                </div>
+              </div>
+            ) : !address ? (
               <InvestigateEmptyState navigate={navigate} />
             ) : (
               <InvestigationGraph
