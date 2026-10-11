@@ -67,7 +67,7 @@ export default function AlertTable({ alerts, loading, selectedWallet, onSelectWa
             {/* Core metadata */}
             <div className="alert-details-flat">
               <strong>ORIGIN:</strong> {alert.primary_state?.toUpperCase()} <br />
-              <strong>ISP/ASN:</strong> {alert.isp} ({alert.asn}) <br />
+              <strong>ISP/ASN:</strong> {alert.isp || 'N/A'} ({alert.asn || 'N/A'}) <br />
               <strong>CLASS:</strong> {alert.cluster_name?.toUpperCase()}
               {riskFactors.length > 0 && (
                 <div style={{ marginTop: '4px', fontSize: '10px', color: '#f87171' }}>

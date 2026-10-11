@@ -211,7 +211,7 @@ export default function Workspace() {
           </div>
           <div className="ws-instructions">
             <p><strong>INSTRUCTIONS:</strong></p>
-            <p>1. Generate ledger via Streamlit.</p>
+            <p>1. Select a ledger CSV to analyze.</p>
             <p>2. Upload <code>ledger.csv</code> here.</p>
             <p>3. AI will extract regional anomalies.</p>
           </div>

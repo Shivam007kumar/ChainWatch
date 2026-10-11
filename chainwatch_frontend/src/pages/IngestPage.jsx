@@ -7,10 +7,11 @@
  * Flow: select file → submit → loading spinner → result or error.
  * The backend is synchronous — we wait for the full response.
  */
-import { useState, useRef }  from 'react';
+import { useState, useRef, useEffect }  from 'react';
 import { useNavigate }       from 'react-router-dom';
 import CwNav                 from '../components/CwNav';
 import { ingestLedger, clearWorkspace } from '../api/ingestion';
+import { API_BASE } from '../api/client';
 
 export default function IngestPage() {
   const navigate = useNavigate();
@@ -22,6 +23,14 @@ export default function IngestPage() {
   const [error,   setError]   = useState(null);
   const [clearing, setClearing] = useState(false);
   const [clearMsg, setClearMsg] = useState(null);
+  const [demoMode, setDemoMode] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/health`)
+      .then(response => response.json())
+      .then(data => setDemoMode(Boolean(data.demo_mode)))
+      .catch(() => setDemoMode(true));
+  }, []);
 
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
@@ -217,8 +226,16 @@ export default function IngestPage() {
           {/* ── Divider ── */}
           <div style={{ margin: '32px 0 20px', borderTop: '1px solid #e2e8f0' }} />
 
-          {/* ── Clear workspace ── */}
+          {/* ── Database management ── */}
           <div style={{ background: '#fff', border: '1px solid #94a3b8', padding: '16px 20px', borderRadius: 2 }}>
+            {demoMode ? (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>DATABASE MANAGEMENT</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Demo Mode</div>
+                <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.6 }}>The demonstration dataset is protected from accidental deletion.</div>
+                <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.6 }}>Wiping the database is disabled during the demonstration.</div>
+              </>
+            ) : <>
             <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Clear Workspace
             </div>
@@ -251,6 +268,7 @@ export default function IngestPage() {
                 {clearMsg}
               </div>
             )}
+            </>}
           </div>
 
         </div>

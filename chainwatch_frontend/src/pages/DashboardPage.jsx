@@ -47,15 +47,79 @@ function useAPI(endpoint) {
   return { data, loading };
 }
 
+async function fetchAllAlerts() {
+  const fetchPage = async (offset) => {
+    const response = await fetch(`${API}/alerts?limit=500&offset=${offset}`);
+    if (!response.ok) throw new Error(`Failed to load alerts (${response.status})`);
+    return response.json();
+  };
+
+  const firstPage = await fetchPage(0);
+  const firstItems = Array.isArray(firstPage.items) ? firstPage.items : [];
+  const total = Number(firstPage.total);
+  const pageSize = Number(firstPage.page_size);
+  const pageLimit = Number.isFinite(total) && pageSize > 0
+    ? Math.max(1, Math.ceil(total / pageSize))
+    : 1;
+  const allItems = [...firstItems];
+  let nextOffset = Number(firstPage.offset || 0) + firstItems.length;
+  let hasMore = Boolean(firstPage.has_more);
+
+  for (let pageIndex = 1; hasMore && pageIndex < pageLimit && nextOffset < total; pageIndex += 1) {
+    const page = await fetchPage(nextOffset);
+    const items = Array.isArray(page.items) ? page.items : [];
+    const responseOffset = Number(page.offset);
+    const newOffset = responseOffset + items.length;
+
+    // Stop if the API metadata is invalid or this page made no forward progress.
+    if (!Number.isFinite(responseOffset) || items.length === 0 || newOffset <= nextOffset) break;
+
+    allItems.push(...items);
+    nextOffset = newOffset;
+    hasMore = Boolean(page.has_more) && nextOffset < Number(page.total);
+  }
+
+  return allItems;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { data: stats, loading: statsLoading } = useAPI('/stats');
-  const { data: apiAlerts, loading: alertsLoading } = useAPI('/anomalies');
+  const [apiAlerts, setApiAlerts] = useState(null);
+  const [alertsLoading, setAlertsLoading] = useState(true);
   const { data: graphData, loading: graphLoading } = useAPI('/graph');
   const [hoveredState, setHoveredState] = useState("");
   const [alerts, setAlerts] = useState([]);
   const [wallets, setWallets] = useState([]);
-  useEffect(() => { if (apiAlerts) setAlerts(apiAlerts); }, [apiAlerts]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllAlerts()
+      .then(items => { if (!cancelled) setApiAlerts(items); })
+      .catch(error => {
+        console.error(error);
+        if (!cancelled) setApiAlerts([]);
+      })
+      .finally(() => { if (!cancelled) setAlertsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    if (!apiAlerts) return;
+    const byWallet = new Map();
+    apiAlerts.forEach((item) => {
+      const walletAddress = item.wallet_address || (item.entity_type === 'wallet' ? item.entity_id : null);
+      if (!walletAddress) return;
+      const alert = {
+        ...item,
+        wallet_address: walletAddress,
+        confidence_score: item.confidence_score ?? item.risk_score ?? 0,
+      };
+      const current = byWallet.get(walletAddress);
+      if (!current || Number(alert.risk_score || alert.confidence_score) > Number(current.risk_score || current.confidence_score)) {
+        byWallet.set(walletAddress, alert);
+      }
+    });
+    setAlerts([...byWallet.values()]);
+  }, [apiAlerts]);
   useEffect(() => { if (stats?.wallet_locations) setWallets(stats.wallet_locations); }, [stats]);
   const [selectedState, setSelectedState] = useState(null);
   const [highlightedWallet, setHighlightedWallet] = useState(null);
@@ -146,6 +210,7 @@ export default function DashboardPage() {
         <div className={`ticker-track ${liveThreatData ? 'paused' : ''}`}>
           {alerts && alerts.length > 0 ? [...alerts.slice(0, 10), ...alerts.slice(0, 10)].map((alert, idx) => {
             const isTarget = liveThreatData && alert.wallet_address === liveThreatData.wallet_address;
+            const volumeBtc = Number(alert.total_volume_btc);
             return (
               <div key={`${alert.wallet_address}-${idx}`} className={`flash-card-flat ${isTarget ? 'danger' : ''}`}>
                 <div className="fc-header-flat">
@@ -154,7 +219,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="fc-body-flat">
                   <div><strong>ID:</strong> {alert.wallet_address.substring(0, 12)}...</div>
-                  <div><strong>VOL:</strong> {alert.total_volume_btc} BTC</div>
+                  <div><strong>VOL:</strong> {Number.isFinite(volumeBtc) ? `${volumeBtc.toLocaleString(undefined, { maximumFractionDigits: 4 })} BTC` : 'N/A'}</div>
                   <div className="fc-alert-text">CONFIDENCE: {alert.confidence_score}%</div>
                 </div>
               </div>
@@ -166,8 +231,8 @@ export default function DashboardPage() {
       <main id="main-content" className="main-content">
         <MetricCards stats={statsLoading ? null : stats} />
         {/* ChartsView — risk distribution donut + cluster bar chart */}
-        {stats && apiAlerts && apiAlerts.length > 0 && (() => {
-          const clusterCounts = apiAlerts.reduce((acc, alert) => {
+        {stats && alerts.length > 0 && (() => {
+          const clusterCounts = alerts.reduce((acc, alert) => {
             const name = alert.cluster_name || 'Unknown';
             acc[name] = (acc[name] || 0) + 1;
             return acc;

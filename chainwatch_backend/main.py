@@ -364,6 +364,11 @@ async def ingest_ledger(file: UploadFile = File(...)):
 @app.delete("/api/v1/clear")
 def clear_workspace():
     """Wipes the Neo4j database and resets all local JSON workspace state."""
+    if settings.demo_mode:
+        raise HTTPException(
+            status_code=403,
+            detail="Database wipe is disabled while Demo Mode is enabled.",
+        )
     warnings = []
 
     empty_graph = {

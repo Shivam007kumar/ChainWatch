@@ -31,7 +31,7 @@ def liveness():
     Liveness probe — returns 200 immediately if the process is alive.
     Does not check Neo4j or GeoIP. Used by Docker HEALTHCHECK and load balancers.
     """
-    return {"status": "ok", "version": "2.0.0"}
+    return {"status": "ok", "version": "2.0.0", "demo_mode": settings.demo_mode}
 
 
 @router.get("/health/ready")

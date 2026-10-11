@@ -52,7 +52,19 @@ chainwatch_*.csv
 GeoLite2-*/
 dbip-asn-lite-*.csv
 *.mmdb
+/IP_Address.csv
 
 # Docker bind-mount working directories
 exports/
 geoip/*.mmdb
+geoip/*.csv
+geoip/*.geojson
+
+chainwatch-prod-key.pem
+
+
+personalguide.txt
+
+# Local database backups and exported dumps
+/backups/
+*.dump

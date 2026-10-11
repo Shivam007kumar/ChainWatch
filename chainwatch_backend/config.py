@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 52_428_800   # 50 MB
 
     env: str = "dev"
+    demo_mode: bool = False
 
     @property
     def auth_user(self) -> str:

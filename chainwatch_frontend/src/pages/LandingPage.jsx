@@ -18,7 +18,7 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section style={{
-        background: 'var(--gov-blue)',
+        background: "linear-gradient(to right, rgba(0, 51, 102, 0.95) 0%, rgba(0, 51, 102, 0.6) 100%), url('https://images.unsplash.com/photo-1565371767810-ef913a6c8315?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover no-repeat",
         borderBottom: '4px solid var(--gov-saffron)',
         padding: '72px 32px 64px',
         color: '#fff',

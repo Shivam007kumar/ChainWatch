@@ -20,7 +20,7 @@ function normalise(stats) {
   return {
     total_transactions:       stats.total_transactions        ?? stats.entities?.transactions       ?? null,
     total_wallets:            stats.total_wallets             ?? stats.entities?.wallets            ?? null,
-    anomalies_detected:       stats.anomalies_detected        ?? stats.risk?.flagged_wallets        ?? null,
+    anomalies_detected:       stats.anomalies_detected        ?? stats.detections?.anomalies       ?? stats.risk?.flagged_wallets ?? null,
     peeling_chains_detected:  stats.peeling_chains_detected   ?? stats.detections?.peeling_chains  ?? null,
     coinjoin_mixers_detected: stats.coinjoin_mixers_detected  ?? stats.detections?.coinjoins       ?? null,
   };

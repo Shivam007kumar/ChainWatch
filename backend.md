@@ -275,7 +275,7 @@ All 17 endpoints are strictly versioned under `/api/v1` and frozen.
 ### 8.1 The 3-Minute Live Demo Script
 1. **0:00 - 0:30 (The Ingest & Problem)**:
    * *"Respected judges, criminal syndicates rely on Bitcoin’s pseudonymity to layer funds. We will demonstrate how ChainWatch unmasks an illicit syndicate in real-time."*
-   * Upload a fresh dataset generated from `generator_app.py`.
+   * Review the existing static demonstration dataset.
 2. **0:30 - 1:15 (The Alert & AI Explainability)**:
    * Show the `/alerts` feed. The top alert appears with `risk_score: 96 (Critical)`.
    * Open the wallet: Show the **TreeSHAP explanation card**.

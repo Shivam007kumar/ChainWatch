@@ -11,7 +11,7 @@ The project has four main pieces:
 1. **React web interface** — pages used to upload data, review alerts, search entities, and inspect a graph.
 2. **FastAPI backend** — receives uploads, runs analysis, serves data to the interface, and creates PDF reports.
 3. **Neo4j graph database** — stores wallets, transactions, IPs, datasets, alerts, and their relationships.
-4. **Streamlit sample-data generator** — creates a synthetic CSV with example patterns for demonstrations.
+4. **Static demonstration dataset** — the existing 10,000-transaction Neo4j dataset used for the demo.
 
 ## 2. Why it exists
 
@@ -44,18 +44,18 @@ The upload endpoint accepts a CSV file (up to 50 MB). The active parser in `chai
 
 List cells can be JSON arrays such as `["address1", "address2"]`; the legacy parser also attempts to accept Python-style single-quoted lists. The active path skips a row when one of these list fields cannot be parsed. It does not use the newer validator to check all fields, so callers should supply well-formed values, matching address/amount list lengths, valid timestamps, ports, and non-negative amounts.
 
-The bundled generator creates 1,000 synthetic rows, can plant a six-step peeling sequence and a CoinJoin-like transaction, and lets the operator pick a target Indian state for some synthetic IP ranges. These records are illustrative, not real blockchain or subscriber attribution data.
+The demonstration uses the existing static 10,000-transaction dataset in Neo4j. It is not regenerated during normal demo startup.
 
 ## 4. Simple user flow
 
-1. **Start the local services.** The user starts Neo4j separately with Docker Compose, then starts the backend, sample-data generator, and frontend using `Start.sh`.
-2. **Prepare a ledger.** Either generate a demonstration CSV in the Streamlit app (port 8501) or provide a compatible CSV.
+1. **Start the local services.** Start the Docker Compose stack, which runs Neo4j, the backend, and nginx/frontend.
+2. **Open the demo.** The persisted Neo4j database provides the static demonstration dataset.
 3. **Upload it.** On `/ingest` (or the older `/workspace` screen), choose the CSV and run the analysis. The upload is synchronous: the page waits for the backend to finish rather than polling a job-status API.
 4. **Review the result.** The upload response reports a dataset ID, anomaly count, pattern counts, propagated-risk count, skipped rows, and whether the graph view was limited.
 5. **Triage alerts.** On `/alerts`, filter and sort the saved alerts. Selecting an alert opens the wallet investigation route.
 6. **Explore entities.** Search wallet addresses, transaction IDs, or IPs on `/search`; inspect a wallet graph, timeline, transaction, or IP information in the investigation views.
 7. **Export a dossier.** The dashboard and older workspace provide links to a wallet PDF endpoint. The report is generated from the local anomaly JSON record (and uses a fallback template for an address that is not in that list).
-8. **Reset when appropriate.** `/ingest` has a clear-workspace action. It deletes Neo4j graph data and resets the legacy JSON files; this operation is protected by an API key.
+8. **Reset when permitted.** `/ingest` has a clear-workspace action. It deletes Neo4j graph data and resets legacy JSON files when `DEMO_MODE=false`; when Demo Mode is enabled, the backend rejects the wipe with HTTP 403.
 
 ## 5. Frontend: what the user sees
 
@@ -234,8 +234,8 @@ The backend also maintains `anomaly_results.json`, `stats.json`, and `graph.json
 | `backend.md` | Detailed backend/reference notes; some statements are aspirational or from earlier designs, so compare against code |
 | `report.md` | Existing backend verification/audit notes, not the general project guide |
 | `PROJECT_REPORT.md` | This implementation-oriented project guide |
-| `docker-compose.yml` | Starts only the local Neo4j database, with persistent Docker volumes and browser/Bolt ports |
-| `Start.sh` | Starts FastAPI, Streamlit, and Vite processes and writes logs/PIDs; it does not start Neo4j |
+| `docker-compose.yml` | Starts Neo4j, FastAPI, and frontend/nginx with persistent Neo4j volumes; only frontend/nginx publishes a host port |
+| `Start.sh` | Starts the local FastAPI backend and Vite frontend; it does not start Neo4j |
 | `Kill.sh` | Stops processes launched by the start script and sweeps matching processes |
 
 ### Backend
@@ -256,7 +256,6 @@ The backend also maintains `anomaly_results.json`, `stats.json`, and `graph.json
 | `chainwatch_backend/db/neo4j_driver.py` | Shared Neo4j driver and query execution wrapper |
 | `chainwatch_backend/db/schema.py` | Startup uniqueness constraints and performance indexes |
 | `chainwatch_backend/db/queries/` | Cypher query builders and batch persistence/read functions |
-| `chainwatch_backend/generator_app.py` | Streamlit synthetic ledger generator |
 | `chainwatch_backend/requirements.txt` | Pinned Python dependencies |
 
 ### Frontend
@@ -275,16 +274,14 @@ The backend also maintains `anomaly_results.json`, `stats.json`, and `graph.json
 
 ## 10. Local setup and operation
 
-1. Install Docker Desktop or Docker Engine with Compose, Python, and Node.js/npm.
-2. Start Neo4j from the project root with `docker compose up -d`. The compose file exposes Neo4j Browser on port 7474 and Bolt on port 7687, and retains its data in named volumes.
-3. Configure `chainwatch_backend/.env` with a Neo4j password and any desired settings. `config.py` defaults to `bolt://localhost:7687`, database `neo4j`, and a local API key value. Change credentials and the API key for any shared deployment; do not commit secret values.
-4. Create the backend Python environment and install `chainwatch_backend/requirements.txt`.
-5. Install frontend dependencies in `chainwatch_frontend` with npm.
-6. Run `./Start.sh` from the project root. It launches FastAPI on port 8000, Streamlit on port 8501, and Vite on port 5173.
-7. Open the frontend at `http://localhost:5173`. API docs are available from FastAPI's standard `/docs` route while the backend is running.
-8. Stop the app processes with `./Kill.sh`; stop Neo4j separately with `docker compose down`.
+1. Install Docker Desktop or Docker Engine with Compose. Python and Node.js/npm are needed only for host development with `Start.sh`.
+2. Configure `chainwatch_backend/.env` from `chainwatch_backend/.env.example`, setting `NEO4J_PASSWORD`, `API_KEY`, and `DEMO_MODE=true` for the protected demonstration. The Docker backend image also requires the four local GeoIP inputs documented in `README.md`; the GeoLite and DB-IP files are ignored by Git, while the root `IP_Address.csv` is already tracked in the existing repository history. The Dockerfile build fails if any input is missing.
+3. From the project root, run `docker compose --env-file chainwatch_backend/.env up -d --build`. Compose starts Neo4j, FastAPI, and frontend/nginx. Only frontend/nginx is published on host port 80; backend port 8000 and Neo4j ports 7474/7687 remain internal to the Docker network.
+4. Open `http://localhost`. The same-origin `/api/v1` requests enter through nginx and are proxied to FastAPI.
+5. For host development, `./Start.sh` launches only FastAPI and Vite; it does not start containers. It requires a Neo4j endpoint reachable from the host, since the Compose configuration does not publish Neo4j ports. `./Kill.sh` stops those host processes.
+6. Stop the Docker stack with `docker compose --env-file chainwatch_backend/.env down`. This preserves named volumes. Do not use `down -v` unless deleting the database is intentional.
 
-`docker compose down` preserves Neo4j's named-volume data. Removing volumes (`docker compose down -v`) deletes that database data. The application's clear-workspace endpoint is also destructive: it clears graph data and local generated workspace JSON files.
+When `DEMO_MODE=true`, the database wipe endpoint rejects requests with HTTP 403. With `DEMO_MODE=false`, the existing development wipe behavior remains available. The protected demo dataset remains in the existing Neo4j volume. `docker compose down` preserves named-volume data; removing volumes with `docker compose down -v` deletes it.
 
 ## 11. Important implementation notes and limits
 

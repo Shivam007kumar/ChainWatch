@@ -42,7 +42,6 @@ echo ""
 echo "Sweeping for any leftover matching processes..."
 
 pkill -f "uvicorn main:app" 2>/dev/null && echo "  Killed leftover uvicorn process(es)"
-pkill -f "streamlit run generator_app.py" 2>/dev/null && echo "  Killed leftover streamlit process(es)"
 pkill -f "vite" 2>/dev/null && echo "  Killed leftover vite process(es)"
 
 echo ""

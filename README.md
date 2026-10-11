@@ -1,6 +1,6 @@
 # ChainWatch — National Crypto-Threat Intelligence Network
 
-> **NTRO Proof of Concept** · Offline Bitcoin Forensic Intelligence Platform for Detecting Laundering Sequences, Peeling Chains, CoinJoin Mixing, and Threat Activity Across Indian Jurisdictions.
+> **NTRO Proof of Concept** · On-premises Bitcoin forensic intelligence platform for detecting laundering sequences, peeling chains, CoinJoin mixing, and threat activity across Indian jurisdictions.
 
 ---
 
@@ -24,9 +24,9 @@
 
 ## 1. Project Overview
 
-**ChainWatch** is a fully offline Bitcoin transaction intelligence platform built as an NTRO proof-of-concept. It accepts raw cryptocurrency transaction ledgers (CSV), runs a multi-stage unsupervised ML and graph-analytics pipeline entirely on-premises, enriches every record with GeoIP and ASN data, persists the complete intelligence graph to a local Neo4j instance, and exposes the results through a React 19 dashboard and a set of frozen investigation REST APIs.
+**ChainWatch** is an on-premises Bitcoin transaction intelligence platform built as an NTRO proof-of-concept. It accepts raw cryptocurrency transaction ledgers (CSV), runs a multi-stage unsupervised ML and graph-analytics pipeline, enriches records from local GeoIP and ASN data, persists the intelligence graph to Neo4j, and exposes the results through a React 19 dashboard and investigation REST APIs.
 
-No cloud accounts, no external API calls, no synthetic numbers — every metric on the dashboard is derived from real Neo4j queries against the ingested data.
+The forensic pipeline uses local data and does not query external blockchain intelligence APIs; dashboard metrics come from Neo4j. The landing-page hero background is loaded from Unsplash and requires internet access to display.
 
 **Verified on 10,000-row dataset:**
 
@@ -47,21 +47,14 @@ No cloud accounts, no external API calls, no synthetic numbers — every metric 
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  STEP 1 — DATA GENERATION                                                    │
+│  STEP 1 — STATIC DEMO DATASET                                               │
 │                                                                              │
-│  Streamlit Generator  (port 8501)                                            │
+│  Existing 10,000-transaction dataset                                        │
 │  ┌────────────────────────────────────────────────────────────────────────┐  │
-│  │  User selects: row count · target state · seed · anomaly scenarios     │  │
-│  │                                                                        │  │
-│  │  Generator plants deterministic anomaly patterns:                      │  │
-│  │    • Peeling chains  (exact 80/20 split sequences, ≥ 6 hops)           │  │
-│  │    • CoinJoin mixers (4+ inputs, 4 equal outputs, < 2% variance)       │  │
-│  │    • High fan-out / fan-in bursts, high-volume, irregular amounts      │  │
-│  │                                                                        │  │
-│  │  Output: chainwatch_<N>.csv  (ignored by .gitignore)                   │  │
+│  │  The dataset is prepared once and remains static for the demo.        │  │
 │  └────────────────────────────────────────────────────────────────────────┘  │
 │                                │                                             │
-│                    Download CSV from browser                                 │
+│                    Use the existing demo dataset                            │
 └────────────────────────────────┼─────────────────────────────────────────────┘
                                  │
                                  ▼
@@ -234,23 +227,17 @@ No cloud accounts, no external API calls, no synthetic numbers — every metric 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              USER BROWSER                                   │
 │                                                                             │
-│  ┌──────────────────────────────┐     ┌───────────────────────────────┐    │
-│  │  React 19 + Vite (port 5173) │     │  Streamlit Generator (8501)   │    │
-│  │                              │     │                               │    │
-│  │  Landing  /                  │     │  Dataset size, seed, state    │    │
-│  │  Dashboard  /dashboard       │     │  Anomaly toggles              │    │
-│  │  Investigate  /investigate   │     │  → Downloads chainwatch_N.csv │    │
-│  │  Alerts  /alerts             │     └───────────────────────────────┘    │
-│  │  Search  /search             │                                          │
-│  │  Ingest  /ingest             │                                          │
-│  │  About  /about               │                                          │
-│  └──────────────┬───────────────┘                                          │
-│                 │  REST (X-API-Key: chainwatch-local on mutating endpoints) │
+│  ┌──────────────────────────────────────────────────────────────────┐     │
+│  │  React 19 + Vite (served by nginx)                                │     │
+│  │  Landing /   Dashboard /dashboard   Investigate /investigate      │     │
+│  │  Alerts /alerts   Search /search   Ingest /ingest   About /about  │     │
+│  └─────────────────────────────┬────────────────────────────────────┘     │
+│                 │  REST (configured X-API-Key on mutating endpoints)        │
 └─────────────────┼───────────────────────────────────────────────────────────┘
                   │
                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  FastAPI Backend  (port 8000)                                               │
+│  FastAPI Backend  (port 8000, Docker-internal)                              │
 │                                                                             │
 │  api/health.py         GET  /api/v1/health/ready                            │
 │  api/stats.py          GET  /api/v1/stats                                   │
@@ -269,7 +256,7 @@ No cloud accounts, no external API calls, no synthetic numbers — every metric 
 │    Validate → GeoIP → Correlate → IsolationForest+SHAP →                   │
 │    PeelingChain → CoinJoin → KMeans → RiskPropagation → Neo4j MERGE         │
 └──────────────────────────────┬──────────────────────────────────────────────┘
-                               │  Bolt (port 7687)
+                               │  Bolt (Docker-internal, port 7687)
                                ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  Neo4j 5.12.0  (Docker — docker-compose.yml)                                │
@@ -279,7 +266,7 @@ No cloud accounts, no external API calls, no synthetic numbers — every metric 
 │          :BELONGS_TO_DATASET  :ABOUT                                        │
 │                                                                             │
 │  5 uniqueness constraints + 10 composite indexes                            │
-│  Browser UI → http://localhost:7474                                         │
+│  No Neo4j host ports are published                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -303,7 +290,6 @@ No cloud accounts, no external API calls, no synthetic numbers — every metric 
 | Geospatial map | React Simple Maps | — |
 | Network graph | React Force Graph 2D | — |
 | Charts | Recharts | — |
-| Data generator | Streamlit | — |
 | Runtime | Python | 3.14 |
 
 ---
@@ -312,10 +298,10 @@ No cloud accounts, no external API calls, no synthetic numbers — every metric 
 
 ```
 chainwatch/
-├── Start.sh                            # Launches backend + generator + frontend in parallel
+├── Start.sh                            # Launches backend + frontend in parallel
 ├── Kill.sh                             # Tears down all background processes
-├── docker-compose.yml                  # Local Neo4j 5.12.0 container
-├── .gitignore                          # Excludes .env, venv, GeoIP DBs, CSVs, logs, JSON state
+├── docker-compose.yml                  # Neo4j + FastAPI + frontend/nginx stack
+├── .gitignore                          # Excludes secrets, local data, logs, and generated state
 ├── IP_Address.csv                      # Indian IP range reference (tracked)
 ├── india.geojson                       # GeoJSON state boundaries for dashboard map
 ├── india_city.geojson                  # GeoJSON city boundaries
@@ -325,7 +311,6 @@ chainwatch/
 │   ├── requirements.txt                # All Python dependencies (pinned versions)
 │   ├── config.py                       # Pydantic Settings — all tuneable parameters
 │   ├── main.py                         # FastAPI app, route registration, CORS, security
-│   ├── generator_app.py                # Streamlit dataset generator with planted anomalies
 │   │
 │   ├── api/                            # Thin route handlers — no business logic
 │   │   ├── health.py                   # GET /api/v1/health/ready
@@ -499,10 +484,9 @@ All endpoints are prefixed `/api/v1/`. Endpoints marked `[🔑]` require `X-API-
 
 ### Prerequisites
 
-- Docker Desktop (for Neo4j)
-- Python 3.11+ with `venv`
-- Node.js 20+ with npm
-- GeoIP databases (not in repo — see below)
+- Docker Desktop or Docker Engine with Compose
+- The four local GeoIP build inputs listed below (not stored in Git)
+- Python 3.11+ with `venv` and Node.js 20+ with npm only when using the host development scripts
 
 ### 1. Clone and enter the repo
 
@@ -511,93 +495,89 @@ git clone https://github.com/Shivamkumar/ChainWatch.git
 cd chainwatch
 ```
 
-### 2. Start Neo4j
+### 2. Configure the environment
 
 ```bash
-docker compose up -d
+cp chainwatch_backend/.env.example chainwatch_backend/.env
 ```
 
-Neo4j will be available at `http://localhost:7474` (Browser) and `bolt://localhost:7687` (driver). Default credentials: `neo4j / chainwatch2026`.
+Set `NEO4J_PASSWORD` and `API_KEY` to appropriate values in this file. Set `DEMO_MODE=true` for the protected demonstration database. Compose reads this file with `--env-file`; the backend also receives its service settings from this file. Do not use sample or development credentials for a shared deployment.
 
-### 3. Backend setup
+### 3. GeoIP build inputs (required for the Docker backend image)
+
+The backend image packages these existing local files at the paths expected by the application. Obtain the licensed GeoLite databases and DB-IP ASN dataset through your approved sources, then place them at these exact repository-root paths before building:
+
+| Required local path | Purpose |
+|---|---|
+| `GeoLite2-City_20260904/GeoLite2-City.mmdb` | City/state/country lookup |
+| `GeoLite2-ASN_20260904/GeoLite2-ASN.mmdb` | ASN and organization lookup |
+| `dbip-asn-lite-2026-09.csv` | DB-IP ASN fallback data |
+| `IP_Address.csv` | IP range fallback data |
+
+These files are local build inputs and are not added to this checkpoint. The GeoLite and DB-IP files are ignored by Git. The repository's root `IP_Address.csv` is already tracked in its existing history; this checkpoint leaves it unchanged and does not stage it. `.dockerignore` allows only these exact build inputs into the backend build context while excluding dumps, credentials, and unrelated datasets. The `COPY` steps in `docker/backend.Dockerfile` fail the build if an input is absent; no incomplete image is produced. Check availability and build with `docker compose --env-file chainwatch_backend/.env build backend`. No automatic GeoIP download is performed.
+
+### 4. Start the Docker application
+
+```bash
+docker compose --env-file chainwatch_backend/.env up -d --build
+docker compose --env-file chainwatch_backend/.env ps
+```
+
+Compose starts three services: Neo4j, the FastAPI backend, and frontend/nginx. Only frontend/nginx is published to the host, on port 80. The backend (port 8000) and Neo4j (Bolt port 7687 and Browser port 7474) are reachable only on the internal Docker network; neither has a host port mapping. Open the application at `http://localhost`.
+
+When `DEMO_MODE=true`, the Ingest page explains that the demonstration database is protected and `DELETE /api/v1/clear` returns HTTP 403. With `DEMO_MODE=false`, the existing development wipe behavior remains enabled.
+
+### 5. Host development setup (optional)
+
+`Start.sh` launches the host FastAPI development server and Vite dev server; it does not start Docker services. Install the Python and Node dependencies, and configure `NEO4J_URI` to point to a Neo4j instance reachable from the host. The Compose Neo4j service does not publish Bolt to the host.
 
 ```bash
 cd chainwatch_backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 4. Configure environment
-
-```bash
-cp .env.example .env
-```
-
-The defaults in `.env.example` work with the Docker Compose Neo4j out of the box:
-
-```env
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=hackathon2026
-NEO4J_DATABASE=neo4j
-API_KEY=chainwatch-local
-```
-
-### 5. GeoIP databases (required for IP enrichment)
-
-Download from [MaxMind](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) (free account required):
-
-- `GeoLite2-City.mmdb` → place in `GeoLite2-City_<date>/`
-- `GeoLite2-ASN.mmdb`  → place in `GeoLite2-ASN_<date>/`
-
-Update paths in `.env` if needed (defaults in `config.py` scan for `GeoLite2-City_*/` and `GeoLite2-ASN_*/` automatically).
-
-### 6. Frontend setup
-
-```bash
+cd ..
 cd chainwatch_frontend
 npm install
+cd ..
+./Start.sh
 ```
+
+The host development URLs are `http://localhost:8000` for FastAPI and `http://localhost:5173` for Vite. Stop these host processes with `./Kill.sh`.
 
 ---
 
 ## 10. Running the Application
 
-Launch all three services in parallel:
-
-```bash
-./Start.sh
-```
+For the Docker application, use the Compose commands above. For host development, use `./Start.sh` as described in the optional host setup; it starts FastAPI and Vite only, and requires a host-reachable Neo4j endpoint.
 
 | Service | URL | Log |
 |---|---|---|
 | FastAPI backend | `http://localhost:8000` | `logs/backend.log` |
-| Streamlit generator | `http://localhost:8501` | `logs/generator.log` |
 | React dashboard | `http://localhost:5173` | `logs/frontend.log` |
 
-**Generating and ingesting a dataset:**
+**Using the static demonstration dataset:**
 
-1. Open `http://localhost:8501` (Streamlit generator)
-2. Select row count (e.g. 10,000), target state, seed, and enable all anomaly scenarios
-3. Click **Generate** and **Download CSV**
-4. Open `http://localhost:5173/ingest`
-5. Upload the downloaded CSV and click **Ingest**
-6. Navigate to `/dashboard` — all metrics update from the live Neo4j data
+1. Start the Docker stack with its existing persisted Neo4j dataset.
+2. Open `http://localhost/dashboard` to review the demo data.
 
 ---
 
 ## 11. Stopping the Application
 
+For host development, stop the processes launched by `Start.sh`:
+
 ```bash
 ./Kill.sh
 ```
 
-To also wipe all Neo4j data:
+`./Kill.sh` stops only the host processes launched by `Start.sh`; it does not stop Docker containers. To stop the Compose stack while preserving Neo4j data, run:
 
 ```bash
-docker compose down -v
+docker compose --env-file chainwatch_backend/.env down
 ```
+
+Do not append `-v` unless you intentionally want to delete the Neo4j volumes and all stored graph data.
 
 ---
 

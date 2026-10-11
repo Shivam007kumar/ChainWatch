@@ -87,8 +87,16 @@ def _list_alerts_cypher(
     data_q = f"""
     MATCH (a:Alert) {where}
     OPTIONAL MATCH (a)-[:TARGETS]->(w:Wallet)
-    RETURN a, w.state AS wallet_state
-    ORDER BY {safe_sort} {direction}
+    CALL {{
+        WITH w
+        OPTIONAL MATCH (w)-[sent:SENT]->(:Transaction)
+        RETURN coalesce(sum(sent.amount), 0.0) AS total_volume_btc
+    }}
+    OPTIONAL MATCH (w)-[:SENT]->(t:Transaction)<-[:BROADCAST]-(ip:IP)
+    RETURN a, w.state AS wallet_state, total_volume_btc,
+           head(collect(DISTINCT ip.org)) AS isp,
+           head(collect(DISTINCT ip.asn)) AS asn
+    ORDER BY {safe_sort} {direction}, a.id ASC
     SKIP $offset LIMIT $limit
     """
 
@@ -119,6 +127,9 @@ def _build_alert_dict(row: dict) -> dict:
         "severity":        a.get("severity", "low"),
         "cluster_name":    a.get("cluster_name", ""),
         "primary_state":   a.get("primary_state", row.get("wallet_state", "Unknown")),
+        "total_volume_btc": round(float(row.get("total_volume_btc") or 0.0), 4),
+        "isp":             row.get("isp") or "N/A",
+        "asn":             row.get("asn") or "N/A",
         "created_at":      str(a.get("created_at") or ""),
         "status":          a.get("status", "open"),
         "risk_factors":    list(a.get("risk_factors") or []),
@@ -190,7 +201,15 @@ def get_alert(alert_id: str):
             """
             MATCH (a:Alert {id: $alert_id})
             OPTIONAL MATCH (a)-[:TARGETS]->(w:Wallet)
-            RETURN a, w.state AS wallet_state
+            CALL {
+                WITH w
+                OPTIONAL MATCH (w)-[sent:SENT]->(:Transaction)
+                RETURN coalesce(sum(sent.amount), 0.0) AS total_volume_btc
+            }
+            OPTIONAL MATCH (w)-[:SENT]->(t:Transaction)<-[:BROADCAST]-(ip:IP)
+            RETURN a, w.state AS wallet_state, total_volume_btc,
+                   head(collect(DISTINCT ip.org)) AS isp,
+                   head(collect(DISTINCT ip.asn)) AS asn
             """,
             {"alert_id": alert_id},
         )

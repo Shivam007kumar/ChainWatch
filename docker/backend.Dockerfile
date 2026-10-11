@@ -67,13 +67,16 @@ WORKDIR /app
 # Copy application source
 COPY chainwatch_backend/ .
 
-# GeoIP databases are NOT baked in — they are mounted at runtime via volumes.
-# The backend falls back to CSV-based IP lookup if MMDB files are absent.
-# To enable MaxMind MMDB: place files in ./database/ and they will be found
-# via ALT_CITY_DB_PATH = /app/database/GeoIP-City.mmdb
-#                        /app/database/GeoIP-ASN.mmdb
+# Package the supplied IP-intelligence datasets at the exact paths resolved by
+# config.py when BASE_DIR is /app (its parent directory is /). These remain
+# available in a fresh image without host-specific bind mounts.
+COPY GeoLite2-City_20260904/GeoLite2-City.mmdb /GeoLite2-City_20260904/GeoLite2-City.mmdb
+COPY GeoLite2-ASN_20260904/GeoLite2-ASN.mmdb /GeoLite2-ASN_20260904/GeoLite2-ASN.mmdb
+COPY IP_Address.csv /IP_Address.csv
+COPY dbip-asn-lite-2026-09.csv /dbip-asn-lite-2026-09.csv
 
-# Create the database directory so the mount point always exists
+# Keep the alternate paths present for compatibility; packaged databases use
+# the primary paths above.
 RUN mkdir -p /app/database
 
 # Non-root user for security
