@@ -66,6 +66,36 @@ export default function LandingPage() {
               >
                 About ChainWatch
               </button>
+              <a
+                href="https://github.com/Shivam007kumar/ChainWatch"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  background: 'rgba(255,255,255,0.10)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.28)', padding: '12px 28px',
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  borderRadius: 2, fontFamily: 'inherit', textDecoration: 'none',
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                }}
+              >
+                View Source Code
+              </a>
+              <a
+                href="https://youtu.be/tvalOmsGBAI"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  background: 'rgba(255,255,255,0.10)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.28)', padding: '12px 28px',
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  borderRadius: 2, fontFamily: 'inherit', textDecoration: 'none',
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                }}
+              >
+                Watch Demo
+              </a>
             </div>
           </div>
         </div>

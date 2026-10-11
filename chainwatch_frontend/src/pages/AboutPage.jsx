@@ -10,7 +10,8 @@
  *   - CTA links to real working pages (/ingest, /alerts, /investigate)
  *   - No external CDN images — uses local /blockchain.png and /emblem_india.svg
  */
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import CwNav from '../components/CwNav';
 
 // ── Section wrapper ────────────────────────────────────────────────────────
@@ -20,6 +21,7 @@ function Section({ id, bg = '#ffffff', children }) {
       background: bg,
       padding: '72px 32px',
       borderBottom: '1px solid #e2e8f0',
+      scrollMarginTop: 80,
     }}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         {children}
@@ -125,6 +127,16 @@ function SourceBadge({ label, detail }) {
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function AboutPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [location.pathname, location.hash]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f8fafc' }}>
@@ -132,59 +144,77 @@ export default function AboutPage() {
 
       {/* 01 — Hero */}
       <section style={{
-        background: 'var(--gov-blue)',
+        background: "linear-gradient(to right, rgba(0, 51, 102, 0.95) 0%, rgba(0, 51, 102, 0.6) 100%), url('https://images.unsplash.com/photo-1565371767810-ef913a6c8315?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover no-repeat",
         borderBottom: '4px solid var(--gov-saffron)',
-        padding: '80px 32px 72px',
+        padding: '72px 32px 64px',
         color: '#fff',
       }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap' }}>
           <img src="/emblem_india.svg" alt="Emblem of India"
                style={{ height: 80, filter: 'brightness(0) invert(1)', opacity: 0.9, flexShrink: 0 }} />
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>
+          <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
               National Technical Research Organisation · Cyber Intelligence Division
             </div>
-            <h1 style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.1, marginBottom: 16, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: 42, fontWeight: 800, lineHeight: 1.1, marginBottom: 14, letterSpacing: '-0.02em' }}>
               ChainWatch
             </h1>
-            <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.8)', maxWidth: 600, lineHeight: 1.65, marginBottom: 28 }}>
+            <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.78)', maxWidth: 580, lineHeight: 1.65, marginBottom: 32 }}>
               An offline blockchain forensic intelligence platform for detecting, mapping,
               and investigating illicit cryptocurrency transaction patterns across Indian jurisdictions.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <button
-                onClick={() => navigate('/ingest')}
+                onClick={() => navigate('/dashboard')}
                 style={{
                   background: 'var(--gov-saffron)', color: '#0f172a',
-                  border: 'none', padding: '11px 22px', fontWeight: 800,
+                  border: 'none', padding: '12px 28px', fontWeight: 800,
                   fontSize: 13, cursor: 'pointer', borderRadius: 2, fontFamily: 'inherit',
                   letterSpacing: '0.04em', textTransform: 'uppercase',
                 }}
               >
-                Ingest Ledger →
+                Enter Dashboard →
+              </button>
+              <button
+                onClick={() => navigate('/ingest')}
+                style={{
+                  background: 'rgba(255,255,255,0.10)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.28)', padding: '12px 28px',
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer', borderRadius: 2,
+                  fontFamily: 'inherit', letterSpacing: '0.04em', textTransform: 'uppercase',
+                }}
+              >
+                Ingest Ledger
               </button>
               <button
                 onClick={() => navigate('/alerts')}
                 style={{
-                  background: 'rgba(255,255,255,0.12)', color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.3)', padding: '11px 22px',
+                  background: 'rgba(255,255,255,0.10)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.28)', padding: '12px 28px',
                   fontWeight: 700, fontSize: 13, cursor: 'pointer', borderRadius: 2,
                   fontFamily: 'inherit', letterSpacing: '0.04em', textTransform: 'uppercase',
                 }}
               >
                 View Alerts
               </button>
-              <button
-                onClick={() => navigate('/')}
-                style={{
-                  background: 'transparent', color: 'rgba(255,255,255,0.65)',
-                  border: '1px solid transparent', padding: '11px 22px',
-                  fontWeight: 700, fontSize: 13, cursor: 'pointer', borderRadius: 2,
-                  fontFamily: 'inherit', letterSpacing: '0.04em', textTransform: 'uppercase',
-                }}
-              >
-                Dashboard
-              </button>
+              <a href="https://github.com/Shivam007kumar/ChainWatch" target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center',
+                background: 'rgba(255,255,255,0.10)', color: '#fff',
+                border: '1px solid rgba(255,255,255,0.28)', padding: '12px 28px',
+                fontWeight: 700, fontSize: 13, cursor: 'pointer', borderRadius: 2,
+                fontFamily: 'inherit', textDecoration: 'none', letterSpacing: '0.04em', textTransform: 'uppercase',
+              }}>
+                View Source Code
+              </a>
+              <a href="https://youtu.be/tvalOmsGBAI" target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center',
+                background: 'rgba(255,255,255,0.10)', color: '#fff',
+                border: '1px solid rgba(255,255,255,0.28)', padding: '12px 28px',
+                fontWeight: 700, fontSize: 13, cursor: 'pointer', borderRadius: 2,
+                fontFamily: 'inherit', textDecoration: 'none', letterSpacing: '0.04em', textTransform: 'uppercase',
+              }}>
+                Watch Demo
+              </a>
             </div>
           </div>
         </div>
@@ -380,6 +410,28 @@ export default function AboutPage() {
           <div><span style={{ color: 'var(--gov-blue)', fontWeight: 700 }}>GeoIP</span> · MaxMind GeoLite2 City + ASN (local .mmdb)</div>
           <div><span style={{ color: 'var(--gov-blue)', fontWeight: 700 }}>Reports</span> · WeasyPrint 63 (PDF generation)</div>
         </div>
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Project Resources
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 20px' }}>
+            {[
+              { label: 'Live Demo', href: 'https://chainwatch.dev/' },
+              { label: 'GitHub Repository', href: 'https://github.com/Shivam007kumar/ChainWatch' },
+              { label: 'YouTube Demo', href: 'https://youtu.be/tvalOmsGBAI' },
+            ].map(({ label, href }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--gov-blue)', fontSize: 13, fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3 }}
+              >
+                {label} ↗
+              </a>
+            ))}
+          </div>
+        </div>
       </Section>
 
       {/* 10 — Methodology & Data Sources */}
@@ -545,7 +597,11 @@ export default function AboutPage() {
                 <a
                   key={label}
                   href={href}
-                  onClick={e => { e.preventDefault(); navigate('/about'); }}
+                  onClick={e => {
+                    e.preventDefault();
+                    navigate(href);
+                    if (href === '/about') window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   style={{ color: '#475569', fontSize: 12, textDecoration: 'none', cursor: 'pointer' }}
                   onMouseEnter={e => e.target.style.color = '#94a3b8'}
                   onMouseLeave={e => e.target.style.color = '#475569'}
