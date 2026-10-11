@@ -71,6 +71,32 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section
+        aria-labelledby="deployment-notice-heading"
+        style={{ background: '#ffffff', padding: '28px 32px 0' }}
+      >
+        <div style={{ maxWidth: 1100, margin: '0 auto', borderLeft: '2px solid var(--gov-saffron)', paddingLeft: 14 }}>
+          <h2
+            id="deployment-notice-heading"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              margin: '0 0 6px',
+              color: '#0f172a',
+              fontSize: 16,
+              fontWeight: 700,
+            }}
+          >
+            <span aria-hidden="true" style={{ color: 'var(--gov-saffron)', flexShrink: 0 }}>ⓘ</span>
+            Deployment &amp; Offline Operation
+          </h2>
+          <p style={{ margin: 0, color: '#475569', fontSize: 14, lineHeight: 1.7 }}>
+            The public demonstration runs on AWS for convenient evaluation. ChainWatch is designed to support self-hosted, on-premises deployment and offline analysis using a local backend, Neo4j database, analytical models, and packaged geolocation and network intelligence datasets. The hosted demonstration requires internet access; offline operation depends on local deployment and installed dependencies.
+          </p>
+        </div>
+      </section>
+
       {/* ── What it is ── */}
       <section style={{ background: '#ffffff', padding: '60px 32px', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
